@@ -5,7 +5,7 @@ import { backgroundIngest } from './ingest';
 const REVALIDATE_SECONDS = 60; // 1 minuto come richiesto
 
 export async function getLeaderboard(region = 'EU', page = 1) {
-  const pageSize = 20;
+  const pageSize = 10;
   const startPage = ((page - 1) * pageSize) + 1;
   
   // 1. Scarichiamo i dati freschi da Blizzard (Sfruttando Next Data Cache)

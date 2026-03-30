@@ -137,7 +137,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}>
             {t.page} {currentPage}
           </span>
-          {players.length >= 20 && (
+          {players.length >= 10 && (
             <Link
               href={`/?region=${region}&page=${currentPage + 1}`}
               style={{
