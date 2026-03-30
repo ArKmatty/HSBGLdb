@@ -1,5 +1,6 @@
 // lib/blizzard.ts
 import { supabase } from './supabase';
+import { backgroundIngest } from './ingest';
 
 const REVALIDATE_SECONDS = 60; // 1 minuto come richiesto
 
@@ -18,6 +19,9 @@ export async function getLeaderboard(region = 'EU', page = 1) {
   const currentPlayers = results.flatMap(data => data.leaderboard?.rows || []);
 
   if (currentPlayers.length === 0) return [];
+
+  // 1b. On-demand ingestion: salva snapshot in background (fire-and-forget, cooldown 10min)
+  backgroundIngest(region, currentPlayers);
 
   // 2. Recuperiamo l'ultimo salvataggio dal DB per Trend
   const playerNames = currentPlayers.map(p => p.accountid);

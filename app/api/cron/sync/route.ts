@@ -7,12 +7,11 @@ const PAGES_TO_FETCH = 4; // Ogni pagina ha 25 elementi (quindi 4 pagine = Top 1
 
 export async function GET(request: Request) {
 
-  // ATTENZIONE: In produzione su Vercel de-commenta queste righe per sicurezza 
-  // usando un Vercel Cron Secret environment variable.
-  // const authHeader = request.headers.get('authorization');
-  // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-  //   return new Response('Unauthorized', { status: 401 });
-  // }
+  // Protezione: solo chi ha il CRON_SECRET può triggerare la sync
+  const authHeader = request.headers.get('authorization');
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return new Response('Unauthorized', { status: 401 });
+  }
 
   try {
     const allPlayersToInsert: any[] = [];
