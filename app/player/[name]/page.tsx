@@ -7,10 +7,14 @@ import Link from 'next/link';
 import { getPlayerHistory, getPlayerLive } from '@/app/actions/player';
 import { getTwitchStatusForPlayer } from '@/app/actions/twitch';
 import { detectLocaleClient, translations } from '@/lib/i18n';
+import ScrollToTop from '@/components/ScrollToTop';
+
+type TimeRange = '24h' | '7d' | '30d' | 'all';
 
 interface HistoryPoint {
   mmr: number;
   date: string;
+  timestamp: number;
   fullDate?: string;
   isLive?: boolean;
 }
@@ -30,6 +34,45 @@ interface TwitchData {
   viewerCount?: number;
 }
 
+function formatXAxisDate(timestamp: number, range: TimeRange, locale: string): string {
+  const d = new Date(timestamp);
+  if (range === '24h') {
+    return d.toLocaleTimeString(locale === 'it' ? 'it-IT' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+  }
+  if (range === '7d') {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return 'Today';
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString(locale === 'it' ? 'it-IT' : 'en-US', { weekday: 'short' });
+  }
+  return d.toLocaleDateString(locale === 'it' ? 'it-IT' : 'en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatTooltipDate(timestamp: number, locale: string): string {
+  return new Date(timestamp).toLocaleString(locale === 'it' ? 'it-IT' : 'en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+const TIME_RANGES: { key: TimeRange; label: string }[] = [
+  { key: '24h', label: '24h' },
+  { key: '7d', label: '7D' },
+  { key: '30d', label: '30D' },
+  { key: 'all', label: 'All' },
+];
+
+const RANGE_MS: Record<TimeRange, number> = {
+  '24h': 24 * 60 * 60 * 1000,
+  '7d': 7 * 24 * 60 * 60 * 1000,
+  '30d': 30 * 24 * 60 * 60 * 1000,
+  'all': Infinity,
+};
+
 export default function PlayerPage() {
   const { name } = useParams();
   const decodedName = decodeURIComponent(name as string);
@@ -42,24 +85,39 @@ export default function PlayerPage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [loadingLive, setLoadingLive] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [timeRange, setTimeRange] = useState<TimeRange>('7d');
 
-  // Uniamo i dati per il grafico per mostrare la progressione in tempo reale
   const chartData = useMemo(() => {
-    const data = [...historyData];
-    if (liveData) {
-      const lastHistoryPoint = data.length > 0 ? data[data.length - 1] : null;
-      if (!lastHistoryPoint || lastHistoryPoint.mmr !== liveData.rating) {
-        data.push({
-          mmr: liveData.rating,
-          date: 'LIVE',
-          isLive: true
-        });
-      }
+    const cutoff = timeRange === 'all' ? 0 : Date.now() - RANGE_MS[timeRange];
+    const filtered = historyData.filter(h => h.timestamp >= cutoff);
+    if (liveData && (filtered.length === 0 || filtered[filtered.length - 1].mmr !== liveData.rating)) {
+      filtered.push({
+        mmr: liveData.rating,
+        date: 'LIVE',
+        timestamp: Date.now(),
+        isLive: true,
+      });
     }
-    return data;
-  }, [historyData, liveData]);
+    return filtered;
+  }, [historyData, liveData, timeRange]);
 
-  // Gestione Ricerche Recenti
+  const xAxisTicks = useMemo(() => {
+    const maxTicks = 6;
+    const data = chartData.filter(d => !d.isLive);
+    if (data.length <= maxTicks) return data.map(d => d.timestamp);
+    const step = Math.ceil(data.length / maxTicks);
+    const ticks: number[] = [];
+    for (let i = 0; i < data.length; i += step) {
+      ticks.push(data[i].timestamp);
+    }
+    if (ticks[ticks.length - 1] !== data[data.length - 1].timestamp) {
+      ticks.push(data[data.length - 1].timestamp);
+    }
+    return ticks;
+  }, [chartData]);
+
+  const localeStr = locale === 'it' ? 'it-IT' : 'en-US';
+
   useEffect(() => {
     if (decodedName) {
       const saved = localStorage.getItem('recentSearches');
@@ -78,15 +136,15 @@ export default function PlayerPage() {
       let lastRating = 0;
       let lastDate = "";
 
-      // 1. Carica lo Storico PRIMA (molto veloce)
       try {
         const hResult = await getPlayerHistory(decodedName);
         if (hResult.success && hResult.history) {
           const history = hResult.history;
           const formatted = history.map((h: { rating: number; created_at: string }) => ({
             mmr: h.rating,
-            date: new Date(h.created_at).toLocaleTimeString(detectLocaleClient() === 'it' ? 'it-IT' : 'en-US', { hour: '2-digit', minute: '2-digit' }),
-            fullDate: h.created_at
+            date: new Date(h.created_at).toLocaleTimeString(localeStr, { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date(h.created_at).getTime(),
+            fullDate: h.created_at,
           }));
           setHistoryData(formatted);
 
@@ -96,7 +154,6 @@ export default function PlayerPage() {
             lastDate = last.created_at;
           }
 
-          // Calcolo Statistiche
           let peak = 0;
           let gamesCount = 0;
           for (let i = 0; i < history.length; i++) {
@@ -121,7 +178,6 @@ export default function PlayerPage() {
         setLoadingHistory(false);
       }
 
-      // 2. Carica il dato Live in background
       try {
         const lResult = await getPlayerLive(decodedName, lastRating, lastDate);
         if (lResult.success && lResult.live) {
@@ -133,7 +189,6 @@ export default function PlayerPage() {
         setLoadingLive(false);
       }
 
-      // 3. Carica i dati Twitch (Lato Server)
       try {
          const tData = await getTwitchStatusForPlayer(decodedName);
          if (tData) {
@@ -150,233 +205,426 @@ export default function PlayerPage() {
   const isNewPeak = (liveData?.rating ?? 0) > stats.peak && stats.peak > 0;
 
   return (
-    <main className="min-h-screen bg-slate-1000 p-6 md:p-12 text-white selection:bg-blue-500/30 font-sans antialiased bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')]">
-      <div className="max-w-6xl mx-auto">
-        
-        {/* TWITCH LIVE ALERT */}
-        {twitchData?.isLive && (
-          <div className="mb-8 p-1 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl animate-in fade-in slide-in-from-top-4 duration-700 relative z-50">
-            <div className="bg-slate-950 rounded-[calc(1rem-1px)] p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                 <div className="relative">
-                    <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(147,51,234,0.5)]">
-                       <Tv className="text-white" size={24} />
-                    </div>
-                    <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-slate-950"></span>
-                    </span>
-                 </div>
-                 <div>
-                    <h3 className="font-black text-lg leading-tight uppercase tracking-tighter italic">{t.liveTwitchNow}</h3>
-                    <p className="text-slate-400 text-xs font-bold line-clamp-1 max-w-md">{twitchData.title}</p>
-                 </div>
-              </div>
-              <div className="flex items-center gap-6">
-                 <div className="text-center md:text-right">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">{t.viewers}</p>
-                    <p className="text-sm font-black text-white">{twitchData.viewerCount?.toLocaleString() || '0'}</p>
-                 </div>
-                 <a 
-                   href={`https://twitch.tv/${twitchData.username}`} 
-                   target="_blank" 
-                   rel="noopener noreferrer"
-                   className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-[0_4px_20px_rgba(147,51,234,0.3)] hover:-translate-y-0.5 no-underline flex items-center gap-2"
-                 >
-                    {t.watchStream}
-                 </a>
-              </div>
-            </div>
-          </div>
-        )}
+    <main style={{ minHeight: '100dvh', background: 'var(--bg-base)' }}>
 
-        <Link href="/" className="inline-flex items-center text-slate-500 hover:text-white mb-10 transition-colors font-medium group no-underline">
-          <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> 
-          <span className="ml-1">{t.backToLeaderboard}</span>
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 1,
+        background: 'linear-gradient(90deg, transparent, var(--accent), transparent)',
+        zIndex: 100,
+      }} />
+
+      <div style={{ maxWidth: 880, margin: '0 auto', padding: '20px 20px 64px' }}>
+
+        {/* Back link */}
+        <Link
+          href="/"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '10px 4px',
+            fontSize: 13,
+            fontWeight: 500,
+            color: 'var(--text-muted)',
+            marginBottom: 24,
+            transition: 'color 150ms',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+        >
+          <ChevronLeft size={16} />
+          {t.backToLeaderboard}
         </Link>
 
         {error && (
-          <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-400">
-            <AlertCircle size={20} />
-            <p className="text-sm font-bold">{error}</p>
+          <div style={{
+            marginBottom: 24,
+            padding: '12px 16px',
+            background: 'rgba(248,113,113,0.08)',
+            border: '1px solid rgba(248,113,113,0.15)',
+            borderRadius: 8,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            color: 'var(--red)',
+            fontSize: 13,
+            fontWeight: 500,
+          }}>
+            <AlertCircle size={16} />
+            {error}
           </div>
         )}
 
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16 px-2">
-          <div className="flex items-center gap-8">
-            <div className="p-6 bg-slate-900 rounded-[2rem] border border-blue-500/20 shadow-2xl relative group overflow-hidden">
-               <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <TrendingUp className="text-blue-400 relative z-10" size={48} />
+        {/* Twitch live banner */}
+        {twitchData?.isLive && (
+          <div style={{
+            marginBottom: 24,
+            padding: '14px 16px',
+            background: 'var(--bg-surface)',
+            border: '1px solid rgba(167,139,250,0.2)',
+            borderRadius: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ position: 'relative' }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8,
+                  background: 'rgba(167,139,250,0.15)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Tv size={18} color="var(--purple)" />
+                </div>
+                <span style={{
+                  position: 'absolute', bottom: -2, right: -2,
+                  width: 10, height: 10, borderRadius: '50%',
+                  background: 'var(--red)',
+                  border: '2px solid var(--bg-surface)',
+                }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {t.liveTwitchNow}
+                </div>
+                {twitchData.title && (
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                    {twitchData.title}
+                  </div>
+                )}
+              </div>
             </div>
-            <div>
-              <div className="flex items-center gap-4 mb-2">
-                <h1 className="text-6xl md:text-7xl font-black tracking-tighter text-white">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  {t.viewers}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {twitchData.viewerCount?.toLocaleString() || '0'}
+                </div>
+              </div>
+              <a
+                href={`https://twitch.tv/${twitchData.username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: 8,
+                  background: 'rgba(167,139,250,0.15)',
+                  color: 'var(--purple)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  transition: 'background 150ms',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(167,139,250,0.25)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(167,139,250,0.15)')}
+              >
+                {t.watchStream}
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Player header */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'flex-start',
+          gap: 20,
+          marginBottom: 28,
+          paddingBottom: 28,
+          borderBottom: '1px solid var(--border-dim)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 10,
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-dim)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <TrendingUp size={22} color="var(--accent)" />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                <h1 style={{
+                  fontSize: 'clamp(22px, 5vw, 36px)',
+                  fontWeight: 800,
+                  letterSpacing: '-0.03em',
+                  color: 'var(--text-primary)',
+                  margin: 0,
+                  lineHeight: 1.1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
                   {decodedName}
                 </h1>
                 {liveData ? (
-                  <span className="flex items-center gap-2 px-4 py-1.5 bg-green-500/20 border border-green-500/30 text-green-400 rounded-full text-xs font-black uppercase tracking-[0.1em] shadow-[0_0_15px_rgba(34,197,94,0.3)]">
-                    <span className="w-2 h-2 bg-green-500 rounded-full"></span> Live
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                    background: 'rgba(52,211,153,0.1)',
+                    border: '1px solid rgba(52,211,153,0.2)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: 'var(--green)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    flexShrink: 0,
+                  }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)' }} />
+                    Live
                   </span>
-                ) : (loadingLive && !loadingHistory) && (
-                  <span className="flex items-center gap-2 px-4 py-1.5 bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-full text-xs font-black uppercase tracking-[0.1em]">
-                     <Loader2 size={12} className="animate-spin" /> {t.liveSync}
+                ) : loadingLive && !loadingHistory ? (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                    background: 'var(--accent-dim)',
+                    border: '1px solid rgba(232,168,56,0.15)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: 'var(--accent)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    flexShrink: 0,
+                  }}>
+                    <Loader2 size={10} className="animate-spin" /> {t.liveSync}
                   </span>
-                )}
+                ) : null}
               </div>
-              <p className="text-slate-500 uppercase tracking-[0.3em] text-[11px] font-black flex items-center gap-3">
-                 {t.bgStats}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
+                  {t.bgStats}
+                </span>
                 {liveData && (
                   <>
-                    <span className="w-1.5 h-1.5 bg-slate-800 rounded-full"></span>
-                    <span className="flex items-center gap-1.5 text-slate-400"><Globe size={14} className="text-blue-500/40" /> {liveData.region} Global Rank #{liveData.rank}</span>
+                    <span style={{ color: 'var(--border-dim)' }}>·</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                      <Globe size={11} /> {liveData.region} #{liveData.rank}
+                    </span>
                   </>
                 )}
                 {twitchData?.username && (
-                   <>
-                    <span className="w-1.5 h-1.5 bg-slate-800 rounded-full"></span>
-                    <a 
-                      href={`https://twitch.tv/${twitchData.username}`} 
-                      target="_blank" 
-                      className="flex items-center gap-1.5 text-purple-400 font-black hover:text-purple-300 no-underline"
+                  <>
+                    <span style={{ color: 'var(--border-dim)' }}>·</span>
+                    <a
+                      href={`https://twitch.tv/${twitchData.username}`}
+                      target="_blank"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--purple)', fontWeight: 500 }}
                     >
-                      <Tv size={14} /> twitch.tv/{twitchData.username}
+                      <Tv size={11} /> {twitchData.username}
                     </a>
-                   </>
+                  </>
                 )}
-              </p>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-end min-h-[100px] justify-end relative">
+          {/* Current MMR */}
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
             {isNewPeak && (
-              <div className="absolute -top-6 right-0 flex items-center gap-1 text-yellow-500 text-[10px] font-black uppercase tracking-widest">
-                < Award size={12} /> {t.newPeak}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginBottom: 4, fontSize: 10, fontWeight: 600, color: 'var(--accent)' }}>
+                <Award size={10} /> {t.newPeak}
               </div>
             )}
-            <p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.25em] mb-2 opacity-60">{t.currentScore}</p>
-            <div className="flex items-baseline gap-3">
-              <p className={`text-6xl md:text-7xl font-black transition-all duration-300 ${liveData ? 'text-blue-400' : 'text-slate-800'}`}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+              {t.currentScore}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <span style={{
+                fontSize: 'clamp(28px, 6vw, 40px)',
+                fontWeight: 800,
+                letterSpacing: '-0.03em',
+                fontVariantNumeric: 'tabular-nums',
+                color: liveData ? 'var(--accent)' : 'var(--text-muted)',
+                transition: 'color 300ms',
+              }}>
                 {(liveData?.rating || stats.peak || 0).toLocaleString()}
-              </p>
-              <span className="text-3xl font-black text-slate-600 mb-1">MMR</span>
+              </span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>MMR</span>
             </div>
           </div>
         </div>
 
-        {/* DASHBOARD STATS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-          {[t.historicalPeak, t.trend7d, t.matchesAnalyzed].map((title, i) => {
-             const icons = [<Trophy key="t" size={32} />, <Activity key="a" size={32} />, <Swords key="s" size={32} />];
-             const values = [
-               stats.peak || (liveData ? liveData.rating : '-'),
-               `${stats.gain7d > 0 ? '+' : ''}${stats.gain7d}`,
-               stats.games
-             ];
-             const colors = ['text-yellow-500', stats.gain7d >= 0 ? 'text-green-400' : 'text-red-400', 'text-purple-400'];
-             const bgColors = ['bg-yellow-500/10', stats.gain7d >= 0 ? 'bg-green-500/10' : 'bg-red-500/10', 'bg-purple-500/10'];
-             
-             return (
-               <div key={title} className="group bg-slate-900 border border-white/[0.05] p-10 rounded-[3rem] flex items-center gap-8 shadow-2xl transition-all duration-300 hover:bg-slate-800 hover:-translate-y-1">
-                 <div className={`p-5 ${bgColors[i]} ${colors[i]} rounded-[1.5rem] border border-white/5`}>
-                   {icons[i]}
-                 </div>
-                 <div>
-                   <p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.2em] mb-2">{title}</p>
-                   {loadingHistory ? (
-                     <div className="h-10 w-24 bg-slate-800/50 animate-pulse rounded-xl"></div>
-                   ) : (
-                     <p className={`text-4xl font-black tracking-tight ${i === 1 ? colors[i] : 'text-white'}`}>
-                       {typeof values[i] === 'number' ? (values[i] as number).toLocaleString() : values[i]}
-                     </p>
-                   )}
-                 </div>
-               </div>
-             );
-          })}
+        {/* Stats cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 28 }}>
+          {[
+            { title: t.historicalPeak, value: stats.peak || (liveData ? liveData.rating : '-'), icon: <Trophy size={20} />, color: 'var(--accent)' },
+            { title: t.trend7d, value: `${stats.gain7d > 0 ? '+' : ''}${stats.gain7d}`, icon: <Activity size={20} />, color: stats.gain7d >= 0 ? 'var(--green)' : 'var(--red)' },
+            { title: t.matchesAnalyzed, value: stats.games, icon: <Swords size={20} />, color: 'var(--purple)' },
+          ].map(item => (
+            <div
+              key={item.title}
+              style={{
+                padding: '14px 16px',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-dim)',
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
+              <div style={{
+                width: 36, height: 36, borderRadius: 8,
+                background: `${item.color}10`,
+                border: `1px solid ${item.color}20`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: item.color,
+                flexShrink: 0,
+              }}>
+                {item.icon}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
+                  {item.title}
+                </div>
+                {loadingHistory ? (
+                  <div style={{ width: 50, height: 16, borderRadius: 4, background: 'var(--bg-subtle)' }} />
+                ) : (
+                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {typeof item.value === 'number' ? item.value.toLocaleString() : item.value}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* CHART SECTION */}
-        <div className="bg-slate-900 p-10 md:p-14 rounded-[4rem] border border-white/[0.08] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.8)] relative overflow-hidden isolate">
-          <div className="h-[520px] w-full relative z-10">
+        {/* Chart */}
+        <div style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-dim)',
+          borderRadius: 10,
+          padding: 16,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+              MMR History
+            </span>
+            <div style={{ display: 'flex', gap: 1, padding: 2, background: 'var(--bg-base)', borderRadius: 6 }}>
+              {TIME_RANGES.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setTimeRange(key)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 4,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                    background: timeRange === key ? 'var(--accent)' : 'transparent',
+                    color: timeRange === key ? 'var(--bg-base)' : 'var(--text-muted)',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ height: 'clamp(250px, 45vw, 400px)' }}>
             {chartData.length > 1 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 45 }}>
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#94a3b8" 
-                    fontSize={11} 
-                    tickLine={false} 
-                    axisLine={false} 
-                    dy={25}
-                    fontFamily="inherit"
-                    fontWeight={700}
-                    letterSpacing="0.05em"
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                  <XAxis
+                    dataKey="timestamp"
+                    type="number"
+                    scale="time"
+                    domain={['dataMin', 'dataMax']}
+                    stroke="var(--text-muted)"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    dy={10}
+                    fontWeight={500}
+                    ticks={xAxisTicks}
+                    tickFormatter={(ts: number) => formatXAxisDate(ts, timeRange, localeStr)}
                   />
-                  <YAxis 
-                    domain={['auto', 'auto']} 
-                    stroke="#94a3b8" 
-                    fontSize={11} 
-                    tickLine={false} 
-                    axisLine={false} 
-                    dx={-20}
-                    fontFamily="inherit"
-                    fontWeight={700}
+                  <YAxis
+                    domain={['auto', 'auto']}
+                    stroke="var(--text-muted)"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    dx={-8}
+                    fontWeight={500}
                     tickFormatter={(val) => val.toLocaleString()}
                   />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#070c1c', 
-                      border: '1px solid rgba(59, 130, 246, 0.4)', 
-                      borderRadius: '1.5rem',
-                      padding: '20px',
-                      boxShadow: '0 20px 40px rgba(0,0,0,0.8)'
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-mid)',
+                      borderRadius: 8,
+                      padding: '10px 14px',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                     }}
-                    cursor={{ stroke: '#3b82f6', strokeWidth: 2 }}
-                    itemStyle={{ color: '#3b82f6', fontWeight: '900', fontSize: '1.6rem' }}
-                    labelStyle={{ color: '#94a3b8', marginBottom: '8px', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.2em' }}
+                    cursor={{ stroke: 'var(--accent)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                    itemStyle={{ color: 'var(--accent)', fontWeight: 700, fontSize: 13 }}
+                    labelStyle={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}
                     formatter={(value: unknown) => [`${(value as number).toLocaleString()}`, t.rating]}
+                    labelFormatter={(label: unknown) => formatTooltipDate(label as number, localeStr)}
                   />
-                  <Area 
-                    type="stepAfter" 
-                    dataKey="mmr" 
-                    stroke="#3b82f6" 
-                    strokeWidth={6} 
-                    fillOpacity={1} 
-                    fill="#3b82f640" 
-                    isAnimationActive={false} // PRESTAZIONI MASSIME
-                    dot={(props: any) => {
-                      if (props.payload.isLive) {
+                  <Area
+                    type="monotone"
+                    dataKey="mmr"
+                    stroke="var(--accent)"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#mmrGradient)"
+                    isAnimationActive={false}
+                    dot={(props: { payload: { isLive?: boolean }; cx?: number; cy?: number }) => {
+                      if (props.payload.isLive && props.cx != null && props.cy != null) {
                         return (
                           <g key={`live-dot-${props.cx}`}>
-                            <circle cx={props.cx} cy={props.cy} r={8} fill="#3b82f6" stroke="#fff" strokeWidth={4} />
+                            <circle cx={props.cx} cy={props.cy} r={5} fill="var(--accent)" stroke="var(--bg-surface)" strokeWidth={2} />
                           </g>
                         );
                       }
                       return null;
                     }}
                   />
+                  <defs>
+                    <linearGradient id="mmrGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.15} />
+                      <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.01} />
+                    </linearGradient>
+                  </defs>
                 </AreaChart>
               </ResponsiveContainer>
             ) : loadingHistory ? (
-              <div className="flex flex-col items-center justify-center h-full">
-                <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
-                <p className="mt-6 text-slate-500 font-black uppercase tracking-[0.3em] text-xs">{t.searchingHistory}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}>
+                <Loader2 size={24} color="var(--accent)" className="animate-spin" />
+                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  {t.searchingHistory}
+                </span>
               </div>
             ) : (
-                <div className="flex flex-col items-center justify-center h-full text-slate-700 bg-slate-950 border border-white/[0.05] rounded-[4rem] p-16 text-center group/empty transition-all duration-300 hover:bg-slate-900">
-                    <div className="p-10 bg-slate-900 rounded-full mb-8 shadow-2xl relative">
-                    <Activity size={56} className="text-blue-500/30 group-hover:text-blue-500/60 transition-colors" />
-                    </div>
-                    <p className="font-black uppercase tracking-[0.25em] text-2xl text-slate-400 mb-3">{t.incompleteData}</p>
-                    <p className="text-base text-slate-600 max-w-sm leading-relaxed font-medium">
-                    {t.incompleteDataDesc}
-                    </p>
-                    {loadingLive && <Loader2 className="mt-10 w-8 h-8 animate-spin text-blue-500/40" />}
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, color: 'var(--text-muted)' }}>
+                <Activity size={32} color="var(--text-muted)" opacity={0.4} />
+                <span style={{ fontSize: 12, fontWeight: 600 }}>{t.incompleteData}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', maxWidth: 280 }}>
+                  {t.incompleteDataDesc}
+                </span>
+                {loadingLive && <Loader2 size={16} color="var(--accent)" className="animate-spin" />}
+              </div>
             )}
           </div>
         </div>
       </div>
+
+      <ScrollToTop />
     </main>
   );
 }

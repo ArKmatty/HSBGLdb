@@ -3,30 +3,30 @@
 
 /* ── Design Tokens ── */
 :root {
-  --bg-base:       #080c14;
-  --bg-surface:    #0d1321;
-  --bg-elevated:   #121929;
-  --bg-subtle:     #1a2235;
+  --bg-base:       #0a0c10;
+  --bg-surface:    #0f1117;
+  --bg-elevated:   #141720;
+  --bg-subtle:     #1a1d28;
 
-  --border-dim:    rgba(255,255,255,0.04);
+  --border-dim:    rgba(255,255,255,0.05);
   --border-mid:    rgba(255,255,255,0.08);
-  --border-bright: rgba(255,255,255,0.12);
+  --border-bright: rgba(255,255,255,0.14);
 
-  --accent:        #3b82f6;
-  --accent-glow:   rgba(59,130,246,0.15);
-  --accent-dim:    rgba(59,130,246,0.08);
+  --accent:        #e8a838;
+  --accent-glow:   rgba(232,168,56,0.12);
+  --accent-dim:    rgba(232,168,56,0.08);
 
-  --text-primary:  #f1f5f9;
-  --text-secondary:#94a3b8;
-  --text-muted:    #475569;
+  --text-primary:  #e8eaed;
+  --text-secondary:#8b8fa3;
+  --text-muted:    #4a4d5e;
 
-  --gold:   #f59e0b;
-  --silver: #94a3b8;
-  --bronze: #b45309;
+  --gold:   #e8a838;
+  --silver: #8b8fa3;
+  --bronze: #a0722a;
 
-  --green:  #22c55e;
-  --red:    #ef4444;
-  --purple: #a855f7;
+  --green:  #34d399;
+  --red:    #f87171;
+  --purple: #a78bfa;
 }
 
 /* ── Base ── */
@@ -43,6 +43,16 @@ body {
   min-height: 100dvh;
 }
 
+/* Subtle noise overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -52,19 +62,17 @@ body {
 /* ── Selection ── */
 ::selection { background: var(--accent-glow); color: var(--text-primary); }
 
-/* ── Utility classes ── */
-.glass {
-  background: rgba(13, 19, 33, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-mid);
-}
-
-/* GPU-safe transition: only transform + opacity */
-.transition-gpu {
-  transition: transform 200ms ease, opacity 200ms ease;
-  will-change: transform;
-}
-
 /* ── No-underline links ── */
 a { text-decoration: none; color: inherit; }
+
+/* ── Animations ── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── Mobile Responsiveness ── */
+@media (max-width: 480px) {
+  ::-webkit-scrollbar { width: 0; height: 0; }
+  .hide-mobile { display: none !important; }
+}

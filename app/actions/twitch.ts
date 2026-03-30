@@ -7,7 +7,7 @@ const CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
 
 /**
  * Ottiene un App Access Token da Twitch.
- * Viene cachato per 24 ore (o finché non scade).
+ * Cachato per 1 ora per evitare token scaduti o revocati.
  */
 const getTwitchAccessToken = unstable_cache(
   async () => {
@@ -29,7 +29,7 @@ const getTwitchAccessToken = unstable_cache(
     }
   },
   ['twitch-access-token'],
-  { revalidate: 86400 } // 24 ore
+  { revalidate: 3600 } // 1 ora
 );
 
 /**
@@ -99,18 +99,28 @@ export async function getTwitchStatusForPlayer(accountId: string) {
 }
 
 /**
+ * Recupera tutte le mappature social dalla cache.
+ */
+const getAllSocials = unstable_cache(
+  async () => {
+    const { data: socials } = await supabase
+      .from('player_socials')
+      .select('accountid, twitchusername');
+    return socials || [];
+  },
+  ['player-socials'],
+  { revalidate: 300 } // 5 minuti — la tabella cambia raramente
+);
+
+/**
  * [SERVER SIDE] Recupera massivamente gli stati Twitch per la classifica.
  */
 export async function getTwitchStatusesForLeaderboard(accountIds: string[]) {
     try {
-        // Recuperiamo TUTTE le mappature (la tabella è piccola, è più veloce e case-resilient)
-        const { data: socials } = await supabase
-            .from('player_socials')
-            .select('accountid, twitchusername');
+        const socials = await getAllSocials();
 
-        if (socials && socials.length > 0) {
-            // Filtriamo solo quelli presenti nella pagina attuale
-            const relevantSocials = socials.filter(s => 
+        if (socials.length > 0) {
+            const relevantSocials = socials.filter(s =>
                 accountIds.some(id => id.toLowerCase() === s.accountid.toLowerCase())
             );
 
@@ -119,10 +129,9 @@ export async function getTwitchStatusesForLeaderboard(accountIds: string[]) {
             const twitchUsernames = relevantSocials.map(s => s.twitchusername);
             const liveMap = await getTwitchLiveStatus(twitchUsernames);
             
-            const results: Record<string, any> = {};
+            const results: Record<string, { isLive: boolean; twitchUsername: string; title?: string; viewerCount?: number }> = {};
             relevantSocials.forEach(s => {
                 const status = liveMap[s.twitchusername.toLowerCase()];
-                // Usiamo sempre il minuscolo per la chiave di mapping
                 results[s.accountid.toLowerCase()] = {
                     isLive: !!status,
                     twitchUsername: s.twitchusername,

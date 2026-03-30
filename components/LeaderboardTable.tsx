@@ -14,17 +14,19 @@ interface Player {
   lastRating?: number;
 }
 
-const RANK_COLORS: Record<number, string> = { 1: '#f59e0b', 2: '#94a3b8', 3: '#b45309' };
+const RANK_COLORS: Record<number, string> = { 1: '#e8a838', 2: '#8b8fa3', 3: '#a0722a' };
 
 export default function LeaderboardTable({ players, twitchStatuses = {}, locale }: { players: Player[]; twitchStatuses?: Record<string, any>; locale: Locale }) {
   const [searchTerm, setSearchTerm] = useState("");
   const router = useRouter();
   const t = translations[locale];
 
-  // Refresh ogni 2 minuti — nessun cost extra, solo router.refresh() che ISR
   useEffect(() => {
-    const id = setInterval(() => router.refresh(), 120_000);
-    return () => clearInterval(id);
+    const handler = () => {
+      if (!document.hidden) router.refresh();
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
   }, [router]);
 
   if (!players || players.length === 0) {
@@ -79,136 +81,142 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
 
       {/* Table */}
       <div style={{
-        borderRadius: 16,
+        borderRadius: 10,
         border: '1px solid var(--border-dim)',
         overflow: 'hidden',
         background: 'var(--bg-surface)',
       }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-dim)' }}>
-              {[t.rank, t.player, t.mmr, 'Δ'].map((h, i) => (
-                <th key={h} style={{
-                  padding: '12px 20px',
-                  textAlign: i === 3 ? 'center' : 'left',
-                  fontSize: 10,
-                  fontWeight: 800,
-                  color: 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.14em',
-                  background: 'var(--bg-elevated)',
-                }}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((player, idx) => {
-              const diff = player.lastRating ? player.rating - player.lastRating : 0;
-              const twitchData = twitchStatuses[player.accountid.toLowerCase()];
-              const isLive = twitchData?.isLive;
-              const rankColor = RANK_COLORS[player.rank];
-              const isTop3 = player.rank <= 3;
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 420 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border-dim)' }}>
+                {[t.rank, t.player, t.mmr, 'Δ'].map((h, i) => (
+                  <th key={h} className={i === 3 ? 'hide-mobile' : ''} style={{
+                    padding: '10px 16px',
+                    textAlign: i === 3 ? 'center' : 'left',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    color: 'var(--text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.14em',
+                    background: 'var(--bg-elevated)',
+                  }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((player, idx) => {
+                const diff = player.lastRating ? player.rating - player.lastRating : 0;
+                const twitchData = twitchStatuses[player.accountid.toLowerCase()];
+                const isLive = twitchData?.isLive;
+                const rankColor = RANK_COLORS[player.rank];
+                const isTop3 = player.rank <= 3;
 
-              return (
-                <tr
-                  key={player.rank}
-                  style={{
-                    borderTop: idx === 0 ? 'none' : '1px solid var(--border-dim)',
-                    background: isTop3 ? 'rgba(59,130,246,0.02)' : 'transparent',
-                    transition: 'background 150ms',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-elevated)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = isTop3 ? 'rgba(59,130,246,0.02)' : 'transparent')}
-                >
-                  {/* Rank */}
-                  <td style={{ padding: '14px 20px', width: 72 }}>
-                    <span style={{
-                      fontSize: 13,
-                      fontWeight: 800,
-                      fontVariantNumeric: 'tabular-nums',
-                      color: rankColor || 'var(--text-muted)',
-                    }}>
-                      #{player.rank}
-                    </span>
-                  </td>
+                return (
+                  <tr
+                    key={player.rank}
+                    style={{
+                      borderTop: idx === 0 ? 'none' : '1px solid var(--border-dim)',
+                      background: isTop3 ? 'rgba(232,168,56,0.02)' : 'transparent',
+                      transition: 'background 150ms',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-elevated)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = isTop3 ? 'rgba(232,168,56,0.02)' : 'transparent')}
+                  >
+                    {/* Rank */}
+                    <td style={{ padding: '12px 16px', width: 60 }}>
+                      <span style={{
+                        fontSize: 13,
+                        fontWeight: 800,
+                        fontVariantNumeric: 'tabular-nums',
+                        color: rankColor || 'var(--text-muted)',
+                      }}>
+                        #{player.rank}
+                      </span>
+                    </td>
 
-                  {/* Player */}
-                  <td style={{ padding: '14px 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Link
-                        href={`/player/${player.accountid}`}
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 600,
-                          color: 'var(--text-primary)',
-                          transition: 'color 150ms',
-                        }}
-                        onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--accent)')}
-                        onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--text-primary)')}
-                      >
-                        {player.accountid}
-                      </Link>
-                      {isLive && (
-                        <a
-                          href={`https://twitch.tv/${twitchData.username}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                    {/* Player */}
+                    <td style={{ padding: '12px 16px', minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                        <Link
+                          href={`/player/${player.accountid}`}
                           style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                            padding: '2px 7px',
-                            borderRadius: 6,
-                            background: 'rgba(168,85,247,0.12)',
-                            border: '1px solid rgba(168,85,247,0.25)',
-                            fontSize: 10,
-                            fontWeight: 800,
-                            color: '#a855f7',
-                            letterSpacing: '0.05em',
-                            textTransform: 'uppercase',
-                            flexShrink: 0,
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: 'var(--text-primary)',
+                            transition: 'color 150ms',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            minWidth: 0,
                           }}
+                          onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--accent)')}
+                          onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--text-primary)')}
                         >
-                          <Tv size={9} />
-                          Live
-                        </a>
+                          {player.accountid}
+                        </Link>
+                        {isLive && (
+                          <a
+                            href={`https://twitch.tv/${twitchData.username}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '6px 10px',
+                              borderRadius: 6,
+                              background: 'rgba(167,139,250,0.1)',
+                              border: '1px solid rgba(167,139,250,0.2)',
+                              fontSize: 10,
+                              fontWeight: 700,
+                              color: 'var(--purple)',
+                              letterSpacing: '0.05em',
+                              textTransform: 'uppercase',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Tv size={10} />
+                            Live
+                          </a>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* MMR */}
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        fontVariantNumeric: 'tabular-nums',
+                        color: 'var(--accent)',
+                      }}>
+                        {player.rating.toLocaleString()}
+                      </span>
+                    </td>
+
+                    {/* Delta */}
+                    <td className="hide-mobile" style={{ padding: '12px 16px', textAlign: 'center' }}>
+                      {diff > 0 ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: 'var(--green)' }}>
+                          <TrendingUp size={13} /> +{diff}
+                        </span>
+                      ) : diff < 0 ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: 'var(--red)' }}>
+                          <TrendingDown size={13} /> {diff}
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                          <Minus size={13} color="var(--text-muted)" />
+                        </span>
                       )}
-                    </div>
-                  </td>
-
-                  {/* MMR */}
-                  <td style={{ padding: '14px 20px' }}>
-                    <span style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      fontVariantNumeric: 'tabular-nums',
-                      color: 'var(--accent)',
-                    }}>
-                      {player.rating.toLocaleString()}
-                    </span>
-                  </td>
-
-                  {/* Delta */}
-                  <td style={{ padding: '14px 20px', textAlign: 'center' }}>
-                    {diff > 0 ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: 'var(--green)' }}>
-                        <TrendingUp size={13} /> +{diff}
-                      </span>
-                    ) : diff < 0 ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: 'var(--red)' }}>
-                        <TrendingDown size={13} /> {diff}
-                      </span>
-                    ) : (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-                        <Minus size={13} color="var(--text-muted)" />
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

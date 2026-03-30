@@ -5,7 +5,7 @@ import { backgroundIngest } from './ingest';
 const REVALIDATE_SECONDS = 60; // 1 minuto come richiesto
 
 export async function getLeaderboard(region = 'EU', page = 1) {
-  const pageSize = 4;
+  const pageSize = 20;
   const startPage = ((page - 1) * pageSize) + 1;
   
   // 1. Scarichiamo i dati freschi da Blizzard (Sfruttando Next Data Cache)
@@ -44,17 +44,39 @@ export async function getLeaderboard(region = 'EU', page = 1) {
 }
 
 /**
- * Scansiona i primi 200 giocatori (8 pagine da 25) in ogni regione.
- * La cache di Next.js farà sì che le prime 4 pagine siano condivise con la home (se entro 60s).
+ * Finds a player's live stats by scanning Blizzard leaderboards.
+ * Strategy: check Supabase for last-known region first, scan that region first,
+ * then fall back to scanning remaining regions only if not found.
  */
 export async function getPlayerLiveStats(name: string) {
   const regions = ['EU', 'US', 'AP'];
-  const PAGES_TO_SCAN = 8; // Top 200 come richiesto
-  
-  // Scansione parallela per ogni regione
-  const results = await Promise.all(regions.map(async (region) => {
+  const PAGES_TO_SCAN = 8;
+
+  // Check Supabase for player's last-known region
+  let preferredRegion: string | null = null;
+  try {
+    const { data: history } = await supabase
+      .from('leaderboard_history')
+      .select('region')
+      .eq('accountId', name)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (history?.[0]?.region) {
+      preferredRegion = history[0].region;
+    }
+  } catch {
+    // Ignore — fall back to default order
+  }
+
+  // Order regions: preferred first, then the rest
+  const orderedRegions = preferredRegion
+    ? [preferredRegion, ...regions.filter(r => r !== preferredRegion)]
+    : regions;
+
+  // Scan regions sequentially — stop as soon as we find the player
+  for (const region of orderedRegions) {
     try {
-      const pageRequests = Array.from({ length: PAGES_TO_SCAN }, (_, i) => 
+      const pageRequests = Array.from({ length: PAGES_TO_SCAN }, (_, i) =>
         fetch(`https://hearthstone.blizzard.com/en-us/api/community/leaderboardsData?region=${region}&leaderboardId=battlegrounds&page=${i + 1}`, { next: { revalidate: REVALIDATE_SECONDS } })
           .then(res => res.json())
           .catch(() => ({ leaderboard: { rows: [] } }))
@@ -62,14 +84,15 @@ export async function getPlayerLiveStats(name: string) {
 
       const pagesResults = await Promise.all(pageRequests);
       const rows = pagesResults.flatMap(d => d.leaderboard?.rows || []);
-      const match = rows.find((r: any) => r.accountid.toLowerCase() === name.toLowerCase());
-      
-      return match ? { ...match, region } : null;
+      const match = rows.find((r: { accountid: string }) => r.accountid.toLowerCase() === name.toLowerCase());
+
+      if (match) {
+        return { ...match, region };
+      }
     } catch (e) {
       console.error(`Error scanning ${region}:`, e);
-      return null;
     }
-  }));
+  }
 
-  return results.find(r => r !== null) || null;
+  return null;
 }

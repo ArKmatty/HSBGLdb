@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../lib/supabase';
-import { getLeaderboard } from '../../../lib/blizzard';
+import { supabase } from '@/lib/supabase';
+import { getLeaderboard } from '@/lib/blizzard';
 
-export async function GET() {
+const CRON_SECRET = process.env.CRON_SECRET;
+
+export async function GET(request: Request) {
+  const authHeader = request.headers.get('authorization');
+  const url = new URL(request.url);
+  const secretParam = url.searchParams.get('secret');
+
+  if (authHeader !== `Bearer ${CRON_SECRET}` && secretParam !== CRON_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const players = await getLeaderboard('EU', 1);
   const playerNames = players.map(p => p.accountid);
   const { data: lastSnapshots, error } = await supabase

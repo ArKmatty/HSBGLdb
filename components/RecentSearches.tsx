@@ -36,7 +36,7 @@ export default function RecentSearches({ locale }: { locale: Locale }) {
             <Link
               href={`/player/${name}`}
               style={{
-                padding: '5px 12px',
+                padding: '8px 14px',
                 borderRadius: 8,
                 fontSize: 13,
                 fontWeight: 600,
@@ -47,7 +47,7 @@ export default function RecentSearches({ locale }: { locale: Locale }) {
               }}
               onMouseEnter={e => {
                 (e.currentTarget as HTMLElement).style.color = 'var(--accent)';
-                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(59,130,246,0.3)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(232,168,56,0.3)';
               }}
               onMouseLeave={e => {
                 (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)';
@@ -60,7 +60,7 @@ export default function RecentSearches({ locale }: { locale: Locale }) {
               onClick={() => remove(name)}
               title={t.remove}
               style={{
-                padding: '4px 5px',
+                padding: '8px',
                 borderRadius: 6,
                 border: 'none',
                 background: 'transparent',
@@ -68,12 +68,15 @@ export default function RecentSearches({ locale }: { locale: Locale }) {
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: 32,
+                minHeight: 32,
                 transition: 'color 150ms',
               }}
               onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--red)')}
               onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = 'var(--text-muted)')}
             >
-              <X size={11} />
+              <X size={14} />
             </button>
           </div>
         ))}

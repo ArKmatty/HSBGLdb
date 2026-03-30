@@ -11,31 +11,20 @@ interface Mover {
   rating: number;
 }
 
-const MEDALS = ['🥇', '🥈', '🥉'];
-
 export default function TopMoversWidget({ players, locale }: { players: Mover[]; locale: Locale }) {
   const t = translations[locale];
   if (!players || players.length === 0) return null;
 
   return (
-    <section style={{ marginBottom: 32 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: 8,
-          background: 'var(--accent-dim)',
-          border: '1px solid rgba(59,130,246,0.2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <TrendingUp size={14} color="var(--accent)" />
-        </div>
-        <h2 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+    <section style={{ marginBottom: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+        <TrendingUp size={13} color="var(--text-muted)" />
+        <h2 style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
           {t.topMovers}
         </h2>
       </div>
 
-      {/* Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
         {players.map((p, idx) => (
           <Link
             key={p.accountid}
@@ -43,35 +32,40 @@ export default function TopMoversWidget({ players, locale }: { players: Mover[];
             style={{
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center',
-              padding: '16px 10px',
+              gap: 2,
+              padding: '12px 14px',
               background: 'var(--bg-surface)',
               border: '1px solid var(--border-dim)',
-              borderRadius: 12,
+              borderRadius: 8,
               cursor: 'pointer',
-              transition: 'border-color 150ms, background 150ms',
-              textAlign: 'center',
+              transition: 'border-color 150ms',
             }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-bright)';
-              (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-dim)';
-              (e.currentTarget as HTMLElement).style.background = 'var(--bg-surface)';
-            }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-mid)')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-dim)')}
           >
-            <span style={{ fontSize: 16, marginBottom: 6 }}>{MEDALS[idx] ?? `#${idx + 1}`}</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: idx < 3 ? 'var(--accent)' : 'var(--text-muted)',
+              }}>
+                #{idx + 1}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--green)' }}>
+                +{p.diff}
+              </span>
+            </div>
             <span style={{
-              fontSize: 12, fontWeight: 700, color: 'var(--text-primary)',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%',
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}>
               {p.accountid}
             </span>
-            <span style={{ fontSize: 20, fontWeight: 900, color: 'var(--green)', marginTop: 8 }}>
-              +{p.diff}
-            </span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
               {p.rating.toLocaleString()} {t.mmr}
             </span>
           </Link>
