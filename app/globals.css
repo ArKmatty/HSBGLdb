@@ -1,26 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
+/* ── Design Tokens ── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-base:       #080c14;
+  --bg-surface:    #0d1321;
+  --bg-elevated:   #121929;
+  --bg-subtle:     #1a2235;
+
+  --border-dim:    rgba(255,255,255,0.04);
+  --border-mid:    rgba(255,255,255,0.08);
+  --border-bright: rgba(255,255,255,0.12);
+
+  --accent:        #3b82f6;
+  --accent-glow:   rgba(59,130,246,0.15);
+  --accent-dim:    rgba(59,130,246,0.08);
+
+  --text-primary:  #f1f5f9;
+  --text-secondary:#94a3b8;
+  --text-muted:    #475569;
+
+  --gold:   #f59e0b;
+  --silver: #94a3b8;
+  --bronze: #b45309;
+
+  --green:  #22c55e;
+  --red:    #ef4444;
+  --purple: #a855f7;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100dvh;
 }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-subtle); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── Selection ── */
+::selection { background: var(--accent-glow); color: var(--text-primary); }
+
+/* ── Utility classes ── */
+.glass {
+  background: rgba(13, 19, 33, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-mid);
+}
+
+/* GPU-safe transition: only transform + opacity */
+.transition-gpu {
+  transition: transform 200ms ease, opacity 200ms ease;
+  will-change: transform;
+}
+
+/* ── No-underline links ── */
+a { text-decoration: none; color: inherit; }

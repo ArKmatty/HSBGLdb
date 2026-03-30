@@ -1,19 +1,20 @@
 "use client";
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { History, X } from 'lucide-react';
+import { Clock, X } from 'lucide-react';
+import type { Locale } from '@/lib/i18n';
+import { translations } from '@/lib/i18n';
 
-export default function RecentSearches() {
+export default function RecentSearches({ locale }: { locale: Locale }) {
   const [recent, setRecent] = useState<string[]>([]);
+  const t = translations[locale];
 
   useEffect(() => {
     const saved = localStorage.getItem('recentSearches');
-    if (saved) {
-      setRecent(JSON.parse(saved));
-    }
+    if (saved) setRecent(JSON.parse(saved));
   }, []);
 
-  const removeSearch = (name: string) => {
+  const remove = (name: string) => {
     const updated = recent.filter(n => n !== name);
     setRecent(updated);
     localStorage.setItem('recentSearches', JSON.stringify(updated));
@@ -22,26 +23,57 @@ export default function RecentSearches() {
   if (recent.length === 0) return null;
 
   return (
-    <div className="mb-12">
-      <div className="flex items-center gap-2 mb-4 text-slate-500">
-        <History size={16} />
-        <h2 className="text-[10px] font-black uppercase tracking-[0.2em]">Ricerche Recenti</h2>
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+        <Clock size={12} color="var(--text-muted)" />
+        <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+          {t.recent}
+        </span>
       </div>
-      <div className="flex flex-wrap gap-3">
-        {recent.map((name) => (
-          <div key={name} className="group relative flex items-center">
-            <Link 
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {recent.map(name => (
+          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Link
               href={`/player/${name}`}
-              className="px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-sm font-bold text-slate-300 hover:text-blue-400 hover:border-blue-500/30 hover:bg-slate-800 transition-all no-underline"
+              style={{
+                padding: '5px 12px',
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--text-secondary)',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-mid)',
+                transition: 'color 150ms, border-color 150ms',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.color = 'var(--accent)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(59,130,246,0.3)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-mid)';
+              }}
             >
               {name}
             </Link>
-            <button 
-              onClick={() => removeSearch(name)}
-              className="ml-1 p-1 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Rimuovi"
+            <button
+              onClick={() => remove(name)}
+              title={t.remove}
+              style={{
+                padding: '4px 5px',
+                borderRadius: 6,
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'color 150ms',
+              }}
+              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--red)')}
+              onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = 'var(--text-muted)')}
             >
-              <X size={12} />
+              <X size={11} />
             </button>
           </div>
         ))}
