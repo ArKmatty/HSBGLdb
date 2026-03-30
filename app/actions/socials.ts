@@ -1,6 +1,10 @@
 "use server";
 
 import { supabase } from "@/lib/supabase";
+import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+
+const ADMIN_SECRET = process.env.ADMIN_SECRET;
 
 interface SocialSubmission {
   playerName: string;
@@ -40,6 +44,10 @@ export async function submitSocialLink(data: SocialSubmission) {
 }
 
 export async function getPendingSubmissions() {
+  if (!await isAdminAuthenticated()) {
+    return { success: false, error: "Unauthorized." };
+  }
+
   try {
     const { data, error } = await supabase
       .from("social_submissions")
@@ -60,6 +68,10 @@ export async function getPendingSubmissions() {
 }
 
 export async function approveSubmission(id: string) {
+  if (!await isAdminAuthenticated()) {
+    return { success: false, error: "Unauthorized." };
+  }
+
   try {
     const { data: submission, error: fetchError } = await supabase
       .from("social_submissions")
@@ -91,6 +103,7 @@ export async function approveSubmission(id: string) {
       return { success: false, error: "Failed to update status." };
     }
 
+    revalidatePath("/admin/socials");
     return { success: true };
   } catch (err) {
     console.error("[SocialAdmin] Unexpected error:", err);
@@ -99,6 +112,10 @@ export async function approveSubmission(id: string) {
 }
 
 export async function rejectSubmission(id: string) {
+  if (!await isAdminAuthenticated()) {
+    return { success: false, error: "Unauthorized." };
+  }
+
   try {
     const { error } = await supabase
       .from("social_submissions")
@@ -110,11 +127,46 @@ export async function rejectSubmission(id: string) {
       return { success: false, error: "Failed to reject submission." };
     }
 
+    revalidatePath("/admin/socials");
     return { success: true };
   } catch (err) {
     console.error("[SocialAdmin] Unexpected error:", err);
     return { success: false, error: "Something went wrong." };
   }
+}
+
+export async function loginAdmin(password: string) {
+  if (!ADMIN_SECRET) {
+    return { success: false, error: "Admin secret not configured." };
+  }
+
+  if (password !== ADMIN_SECRET) {
+    return { success: false, error: "Wrong password." };
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set("admin_auth", ADMIN_SECRET, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24, // 24 hours
+    path: "/",
+  });
+
+  return { success: true };
+}
+
+export async function logoutAdmin() {
+  const cookieStore = await cookies();
+  cookieStore.delete("admin_auth");
+  return { success: true };
+}
+
+async function isAdminAuthenticated(): Promise<boolean> {
+  if (!ADMIN_SECRET) return false;
+  const cookieStore = await cookies();
+  const auth = cookieStore.get("admin_auth");
+  return auth?.value === ADMIN_SECRET;
 }
 
 function buildPlatformUrl(platform: string, username: string): string {
