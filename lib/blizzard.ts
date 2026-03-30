@@ -23,20 +23,32 @@ export async function getLeaderboard(region = 'EU', page = 1) {
   // 1b. On-demand ingestion: salva snapshot in background (fire-and-forget, cooldown 10min)
   backgroundIngest(region, currentPlayers);
 
-  // 2. Recuperiamo l'ultimo salvataggio dal DB per Trend
+  // 2. Recuperiamo i snapshot delle ultime 24h per calcolare il trend
   const playerNames = currentPlayers.map(p => p.accountid);
-  const { data: lastSnapshots } = await supabase
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: snapshots } = await supabase
     .from('leaderboard_history')
     .select('accountId, rating, created_at')
     .in('accountId', playerNames)
-    .order('created_at', { ascending: false });
+    .gte('created_at', yesterday)
+    .order('created_at', { ascending: true });
 
-  // 3. Uniamo i dati
+  // Build a map: lowercase accountId → oldest rating in last 24h
+  const snapshotMap = new Map<string, number>();
+  for (const s of snapshots || []) {
+    const key = s.accountId.toLowerCase();
+    if (!snapshotMap.has(key)) {
+      snapshotMap.set(key, s.rating); // first entry = oldest (ordered ascending)
+    }
+  }
+
+  // 3. Uniamo i dati: trend = current live rating vs oldest snapshot in 24h
   const playersWithTrend = currentPlayers.map(player => {
-    const previousRecord = lastSnapshots?.find(s => s.accountId === player.accountid && s.rating !== player.rating);
+    const oldestRating = snapshotMap.get(player.accountid.toLowerCase());
+    const lastRating = oldestRating !== undefined ? oldestRating : player.rating;
     return {
       ...player,
-      lastRating: previousRecord ? previousRecord.rating : player.rating
+      lastRating,
     };
   });
   

@@ -24,7 +24,15 @@ export default function TopMoversWidget({ players, locale }: { players: Mover[];
         </h2>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+        paddingBottom: 4,
+      }}>
         {players.map((p, idx) => (
           <Link
             key={p.accountid}
@@ -34,11 +42,14 @@ export default function TopMoversWidget({ players, locale }: { players: Mover[];
               flexDirection: 'column',
               gap: 2,
               padding: '12px 14px',
+              minWidth: 140,
+              maxWidth: 140,
               background: 'var(--bg-surface)',
               border: '1px solid var(--border-dim)',
               borderRadius: 8,
               cursor: 'pointer',
               transition: 'border-color 150ms',
+              flexShrink: 0,
             }}
             onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-mid)')}
             onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-dim)')}
