@@ -8,6 +8,7 @@ import { getPlayerHistory, getPlayerLive } from '@/app/actions/player';
 import { getTwitchStatusForPlayer } from '@/app/actions/twitch';
 import { detectLocaleClient, translations } from '@/lib/i18n';
 import ScrollToTop from '@/components/ScrollToTop';
+import SocialLinksForm from '@/components/SocialLinksForm';
 
 type TimeRange = '24h' | '7d' | '30d' | 'all';
 
@@ -425,6 +426,8 @@ export default function PlayerPage() {
                     </a>
                   </>
                 )}
+                <span style={{ color: 'var(--border-dim)' }}>·</span>
+                <SocialLinksForm playerName={decodedName} />
               </div>
             </div>
           </div>
