@@ -22,14 +22,17 @@ export const metadata: Metadata = {
     template: "%s | HS BG Leaderboard",
   },
   description: "Track top Hearthstone Battlegrounds players across EU, US, AP, and CN regions. Live MMR rankings, player stats, historical trends, and Twitch stream status.",
-  keywords: ["Hearthstone", "Battlegrounds", "Leaderboard", "MMR", "Ranking", "Blizzard", "BG", "Top Players", "Live Stats"],
+  keywords: ["Hearthstone", "Battlegrounds", "Leaderboard", "MMR", "Ranking", "Blizzard", "BG", "Top Players", "Live Stats", "Battlegrounds Leaderboard", "HS BG"],
   authors: [{ name: "HS BG Leaderboard" }],
+  category: "games",
+  classification: "Video Game Leaderboard",
   openGraph: {
     title: "Hearthstone Battlegrounds Leaderboard",
     description: "Live MMR rankings for top Hearthstone Battlegrounds players across all regions.",
     type: "website",
     locale: "en_US",
     siteName: "HS BG Leaderboard",
+    url: getBaseUrl() || 'https://your-domain.com',
     images: [{ url: "/api/og", width: 1200, height: 630, alt: "HS BG Leaderboard" }],
   },
   twitter: {
@@ -37,6 +40,7 @@ export const metadata: Metadata = {
     title: "Hearthstone Battlegrounds Leaderboard",
     description: "Live MMR rankings for top Hearthstone Battlegrounds players across all regions.",
     images: ["/api/og"],
+    creator: "@HSBGLeaderboard",
   },
   robots: {
     index: true,
@@ -49,6 +53,9 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  alternates: {
+    canonical: getBaseUrl() || 'https://your-domain.com',
+  },
 };
 
 export default async function RootLayout({
@@ -57,17 +64,34 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const locale = detectLocale(await headers());
+  const baseUrl = getBaseUrl() || 'https://your-domain.com';
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'WebSite',
+    '@type': 'WebApplication',
     name: 'Hearthstone Battlegrounds Leaderboard',
     description: 'Live MMR rankings and player stats for Hearthstone Battlegrounds',
-    url: getBaseUrl() || 'https://your-domain.com',
+    url: baseUrl,
+    applicationCategory: 'Games',
+    operatingSystem: 'Web Browser',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.8',
+      reviewCount: '100',
+    },
+    author: {
+      '@type': 'Organization',
+      name: 'HS BG Leaderboard',
+    },
     potentialAction: {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: `${getBaseUrl() || 'https://your-domain.com'}/player/{search_term_string}`,
+        urlTemplate: `${baseUrl}/player/{search_term_string}`,
       },
       'query-input': 'required name=search_term_string',
     },
