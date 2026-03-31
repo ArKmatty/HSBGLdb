@@ -134,7 +134,13 @@ export default function PlayerPage() {
       });
     }
 
-    return aggregated;
+    // Filter out consecutive duplicate MMR values
+    const deduped = aggregated.filter((point, i) => {
+      if (i === 0) return true;
+      return point.mmr !== aggregated[i - 1].mmr;
+    });
+
+    return deduped;
   }, [historyData, liveData, timeRange]);
 
   const xAxisTicks = useMemo(() => {

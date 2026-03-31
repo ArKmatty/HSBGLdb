@@ -157,6 +157,10 @@ export default function ComparePage() {
         [players[0].name]: p1Point?.mmr ?? null,
         [players[1].name]: p2Point?.mmr ?? null,
       };
+    }).filter((point, i, arr) => {
+      if (i === 0) return true;
+      const prev = arr[i - 1];
+      return point[players[0].name] !== prev[players[0].name] || point[players[1].name] !== prev[players[1].name];
     });
   }, [players, timeRange, now]);
 
