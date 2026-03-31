@@ -15,17 +15,56 @@ export interface PatchNote {
   created_at: string;
 }
 
-const PATCH_NOTES_URLS = [
-  'https://hearthstone.blizzard.com/en-us/news/24267727/35-0-patch-notes',
-  'https://hearthstone.blizzard.com/en-us/blog/24242744/',
-  'https://hearthstone.blizzard.com/en-us/blog/24250382/',
-  'https://hearthstone.blizzard.com/en-us/blog/24179332/31-6-patch-notes',
-];
+async function discoverPatchNoteUrls(): Promise<string[]> {
+  const urls: string[] = [];
+  
+  const fallbackUrls = [
+    'https://hearthstone.blizzard.com/en-us/news/24267727/35-0-patch-notes',
+    'https://hearthstone.blizzard.com/en-us/news/24242744/34-6-2-patch-notes',
+    'https://hearthstone.blizzard.com/en-us/news/24242740/34-6-patch-notes',
+    'https://hearthstone.blizzard.com/en-us/news/24244400/34-4-2-patch-notes',
+    'https://hearthstone.blizzard.com/en-us/news/24245106/34-4-patch-notes',
+    'https://hearthstone.blizzard.com/en-us/news/24250382/34-2-2-patch-notes',
+    'https://hearthstone.blizzard.com/en-us/news/24244423/34-2-patch-notes-battlegrounds-arena-and-gameplay-updates',
+  ];
+  
+  for (const url of fallbackUrls) {
+    urls.push(url);
+  }
+  
+  try {
+    const res = await fetch('https://hearthstone.blizzard.com/en-us/news/', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html',
+      },
+    });
+    if (res.ok) {
+      const html = await res.text();
+      const linkMatches = html.match(/https:\/\/hearthstone\.blizzard\.com\/en-us\/news\/\d+\/[a-z0-9-]+-patch-notes/g) || [];
+      for (const u of linkMatches) {
+        if (!urls.includes(u)) urls.push(u);
+      }
+    }
+  } catch (err) {
+    console.error('[PatchNotes] Failed to discover URLs:', err);
+  }
+  
+  return [...new Set(urls)];
+}
 
 function extractBattlegroundsSection(html: string): string {
-  const bgSectionMatch = html.match(/##\s*Battlegrounds\s*([\s\S]*?)(?=##\s*Bug Fixes|$)/i);
-  if (bgSectionMatch) {
-    return bgSectionMatch[1].trim();
+  const bgMatch = html.match(/Battlegrounds\s*(?:Updates?|Updates for)\s*Dev Comment:?([\s\S]*?)(?=(?:Arena\s*Update|Bug\s*Fixes|Hearthstone Updates|$))/i);
+  if (bgMatch) {
+    return bgMatch[1].trim();
+  }
+  const fallbackMatch = html.match(/Battlegrounds\s*Updates?([\s\S]*?)(?=(?:Arena\s*Update|Bug\s*Fixes|$))/i);
+  if (fallbackMatch) {
+    return fallbackMatch[1].trim();
+  }
+  const bugFixMatch = html.match(/\[Battlegrounds\]([\s\S]*?)(?:\[|$)/i);
+  if (bugFixMatch) {
+    return bugFixMatch[1].trim();
   }
   return '';
 }
@@ -55,7 +94,17 @@ export async function fetchPatchNotes(limit = 10): Promise<PatchNote[]> {
     if (error) throw error;
 
     if (existing && existing.length > 0) {
-      return existing;
+      const sorted = [...existing].sort((a, b) => {
+        const parseDate = (d: string) => {
+          const match = d.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+          if (match) {
+            return new Date(parseInt(match[3]), parseInt(match[1]) - 1, parseInt(match[2])).getTime();
+          }
+          return new Date(d).getTime();
+        };
+        return parseDate(b.date) - parseDate(a.date);
+      });
+      return sorted;
     }
 
     return [];
@@ -77,7 +126,9 @@ export async function refreshPatchNotes(): Promise<{ success: boolean; count?: n
 
   let newCount = 0;
 
-  for (const url of PATCH_NOTES_URLS) {
+  const patchUrls = await discoverPatchNoteUrls();
+  
+  for (const url of patchUrls) {
     try {
       console.log('[PatchNotes] Fetching:', url);
       
@@ -104,37 +155,59 @@ export async function refreshPatchNotes(): Promise<{ success: boolean; count?: n
 
       const titleMatch = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
       const dateMatch = html.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
-      const imageMatch = html.match(/<img[^>]+src="([^"]+patch[^"]+)"/i);
-      const summaryMatch = html.match(/<p[^>]*>([^<]{50,200})<\/p>/i);
-
       const title = titleMatch?.[1]?.trim() || 'Patch Notes';
-      const date = dateMatch?.[1] || new Date().toLocaleDateString('en-US');
-      const imageUrl = imageMatch?.[1];
-      const summary = summaryMatch?.[1]?.trim() || '';
-
-      const bgChanges = extractBattlegroundsSection(html);
-      console.log('[PatchNotes] Extracted BG changes length:', bgChanges.length);
-      const cleanBgChanges = cleanHtml(bgChanges);
-      console.log('[PatchNotes] Cleaned BG changes length:', cleanBgChanges.length);
-      console.log('[PatchNotes] First 200 chars:', cleanBgChanges.substring(0, 200));
-
-      if (!cleanBgChanges) {
-        console.log('[PatchNotes] Skipping - no BG changes found');
+      const date = dateMatch?.[1] || new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+      
+      const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const compositeId = `${slug}-${date.replace(/\//g, '-')}`;
+      
+      const { data: existing } = await supabase
+        .from('patch_notes')
+        .select('id')
+        .eq('id', compositeId)
+        .single();
+      
+      if (existing) {
+        console.log('[PatchNotes] Skipping duplicate:', compositeId);
         continue;
       }
-
-      const id = url.split('/').pop() || title.toLowerCase().replace(/\s+/g, '-');
+      
+      const summaryMatch = html.match(/<p[^>]*>([^<]{50,300})<\/p>/i);
+      const summary = summaryMatch?.[1]?.trim() || '';
+      
+      const imageMatches = html.match(/<img[^>]+src="(https:\/\/[^"]+)"[^>]*>/gi) || [];
+      let heroImage: string | null = null;
+      
+      const headerImgMatch = html.match(/<img[^>]+class="[^"]*blog-header[^"]*"[^>]+src="([^"]+)"/i);
+      if (headerImgMatch) {
+        heroImage = headerImgMatch[1];
+      }
+      
+      if (!heroImage) {
+        const contentImages = imageMatches
+          .slice(0, 8)
+          .map(m => {
+            const srcMatch = m.match(/src="([^"]+)"/);
+            return srcMatch?.[1] || '';
+          })
+          .filter(src => src && !src.includes('blizzard.com/cms/blog_header') && src.match(/\.(jpg|jpeg|png|webp)/i));
+        heroImage = contentImages.length > 0 ? contentImages[0] : null;
+      }
+      
+      const bgChanges = extractBattlegroundsSection(html);
+      const cleanBgChanges = cleanHtml(bgChanges);
+      const storeChanges = cleanBgChanges || summary;
 
       const { error: upsertError } = await supabase
         .from('patch_notes')
         .upsert({
-          id,
+          id: compositeId,
           title,
           date,
           url,
-          image_url: imageUrl || null,
           summary,
-          battlegrounds_changes: cleanBgChanges,
+          battlegrounds_changes: storeChanges,
+          image_url: heroImage,
           created_at: new Date().toISOString(),
         }, { onConflict: 'id' });
 

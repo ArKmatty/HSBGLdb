@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from 'react';
-import { ChevronDown, ScrollText } from 'lucide-react';
+import Link from 'next/link';
+import { ScrollText } from 'lucide-react';
 
 interface PatchNote {
   id: string;
@@ -18,12 +18,6 @@ interface PatchNotesListProps {
 }
 
 export default function PatchNotesList({ patchNotes }: PatchNotesListProps) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
-  const toggleExpand = (id: string) => {
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
   if (!patchNotes || patchNotes.length === 0) {
     return (
       <div style={{
@@ -51,9 +45,9 @@ export default function PatchNotesList({ patchNotes }: PatchNotesListProps) {
     try {
       const [month, day, year] = dateStr.split('/');
       return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
+        month: 'short',
         day: 'numeric',
+        year: 'numeric',
       });
     } catch {
       return dateStr;
@@ -61,151 +55,111 @@ export default function PatchNotesList({ patchNotes }: PatchNotesListProps) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+      gap: 20,
+    }}>
       {patchNotes.map((patch, idx) => (
-        <article
+        <Link
           key={patch.id}
+          href={`/patch-notes/${patch.id}`}
           className="animate-fade-in"
           style={{
+            display: 'block',
             background: 'var(--bg-surface)',
             borderRadius: 12,
             border: '1px solid var(--border-dim)',
             overflow: 'hidden',
+            textDecoration: 'none',
+            transition: 'box-shadow 200ms, transform 200ms',
             animationDelay: `${idx * 0.05}s`,
           }}
+          onMouseEnter={e => {
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.transform = 'translateY(0)';
+          }}
         >
-          <div
-            style={{
-              padding: 20,
-              cursor: 'pointer',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              gap: 16,
-            }}
-            onClick={() => toggleExpand(patch.id)}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            position: 'relative',
+            height: 140,
+            background: patch.image_url 
+              ? `url(${patch.image_url}) center/cover no-repeat` 
+              : 'linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-surface) 100%)',
+            overflow: 'hidden',
+          }}>
+            {!patch.image_url && (
               <div style={{
+                position: 'absolute',
+                inset: 0,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
-                marginBottom: 6,
-                flexWrap: 'wrap',
+                justifyContent: 'center',
+                fontSize: 48,
+                fontWeight: 800,
+                color: 'var(--accent)',
+                opacity: 0.15,
+                letterSpacing: '-0.02em',
               }}>
-                <span style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: 'var(--accent)',
-                  background: 'var(--accent-dim)',
-                  padding: '3px 8px',
-                  borderRadius: 4,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}>
-                  BG
-                </span>
-                <span style={{
-                  fontSize: 12,
-                  color: 'var(--text-muted)',
-                }}>
-                  {formatDate(patch.date)}
-                </span>
+                BG
               </div>
-              <h2 style={{
-                fontSize: 16,
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                margin: 0,
-                lineHeight: 1.3,
-              }}>
-                {patch.title.replace(/ Patch Notes$/i, '')}
-              </h2>
-              {patch.summary && (
-                <p style={{
-                  fontSize: 13,
-                  color: 'var(--text-secondary)',
-                  margin: '8px 0 0',
-                  lineHeight: 1.5,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                }}>
-                  {patch.summary}
-                </p>
-              )}
-            </div>
+            )}
             <div style={{
-              color: 'var(--text-muted)',
-              flexShrink: 0,
-              transition: 'transform 150ms',
-              transform: expanded[patch.id] ? 'rotate(180deg)' : 'rotate(0deg)',
+              position: 'absolute',
+              top: 12,
+              left: 12,
+              background: 'var(--accent)',
+              color: '#000',
+              fontSize: 10,
+              fontWeight: 700,
+              padding: '3px 8px',
+              borderRadius: 4,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
             }}>
-              <ChevronDown size={20} />
+              Battlegrounds
             </div>
           </div>
-
-          {expanded[patch.id] && (
-            <div style={{
-              padding: '0 20px 20px',
-              borderTop: '1px solid var(--border-dim)',
+          <div style={{ padding: 16 }}>
+            <h2 style={{
+              fontSize: 16,
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              margin: '0 0 8px',
+              lineHeight: 1.3,
             }}>
-              <div style={{ paddingTop: 16 }}>
-                <h3 style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.1em',
-                  marginBottom: 12,
-                }}>
-                    Battlegrounds Changes
-                </h3>
-                <div style={{
-                  fontSize: 13,
-                  color: 'var(--text-secondary)',
-                  lineHeight: 1.7,
-                  whiteSpace: 'pre-wrap',
-                  maxHeight: 400,
-                  overflow: 'auto',
-                }}>
-                  {patch.battlegrounds_changes}
-                </div>
-              </div>
-              <a
-                href={patch.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  marginTop: 16,
-                  padding: '8px 14px',
-                  borderRadius: 6,
-                  border: '1px solid var(--border-mid)',
-                  background: 'var(--bg-elevated)',
-                  color: 'var(--text-primary)',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  textDecoration: 'none',
-                  transition: 'all 150ms',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = 'var(--accent)';
-                  e.currentTarget.style.background = 'var(--accent-dim)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = 'var(--border-mid)';
-                  e.currentTarget.style.background = 'var(--bg-elevated)';
-                }}
-              >
-                View Full Patch Notes
-              </a>
+              {patch.title.replace(/ Patch Notes$/i, '')}
+            </h2>
+            {patch.summary && (
+              <p style={{
+                fontSize: 13,
+                color: 'var(--text-secondary)',
+                margin: '0 0 12px',
+                lineHeight: 1.5,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}>
+                {patch.summary}
+              </p>
+            )}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: 12,
+              color: 'var(--text-muted)',
+            }}>
+              <span>Blizzard Entertainment</span>
+              <span>{formatDate(patch.date)}</span>
             </div>
-          )}
-        </article>
+          </div>
+        </Link>
       ))}
     </div>
   );
