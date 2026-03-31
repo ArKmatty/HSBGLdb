@@ -23,7 +23,7 @@ export default function Loading() {
               <div style={{ width: 70, height: 10, borderRadius: 4, background: 'var(--bg-subtle)', animation: 'pulse 2s infinite' }} />
             </div>
             <div style={{ display: 'flex', gap: 2, padding: 2, background: 'var(--bg-base)', borderRadius: 8 }}>
-              {['EU', 'US', 'AP'].map((r) => (
+              {['EU', 'US', 'AP', 'CN'].map((r) => (
                 <div key={r} style={{ width: 48, height: 36, borderRadius: 6, background: 'var(--bg-subtle)', animation: 'pulse 2s infinite' }} />
               ))}
             </div>

@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 
 export default async function sitemap() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com';
-  const regions = ['EU', 'US', 'AP'];
+  const regions = ['EU', 'US', 'AP', 'CN'];
 
   const regionUrls = regions.map(region => ({
     url: `${baseUrl}/?region=${region}`,

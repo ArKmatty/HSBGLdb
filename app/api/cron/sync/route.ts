@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
 
 // Configuriamo le impostazioni della Batch-Job
-const REGIONS = ['EU', 'US', 'AP'];
+const REGIONS = ['EU', 'US', 'AP', 'CN'];
 const PAGES_TO_FETCH = 4; // Ogni pagina ha 25 elementi (quindi 4 pagine = Top 100 per regione)
 
 export async function GET(request: Request) {

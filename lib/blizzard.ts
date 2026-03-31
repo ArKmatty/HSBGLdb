@@ -2,6 +2,8 @@ import { supabase } from './supabase';
 import { ingestLeaderboardSnapshot } from './ingest';
 
 const REVALIDATE_SECONDS = 60;
+const CN_API_BASE = 'https://webapi.blizzard.cn/hs-rank-api-server/api';
+const CN_SEASON_ID = 17;
 
 export interface BlizzardLeaderboardRow {
   rank: number;
@@ -20,12 +22,60 @@ export interface BlizzardPlayerLive extends BlizzardLeaderboardRow {
   region: string;
 }
 
+interface CnLeaderboardResponse {
+  code: number;
+  message: string;
+  data: {
+    list: Array<{
+      position: number;
+      battle_tag: string;
+      score: number;
+    }>;
+    total: number;
+  };
+}
+
 function isValidLeaderboardPage(data: unknown): data is BlizzardLeaderboardPage {
   return typeof data === 'object' && data !== null;
 }
 
+async function getCnLeaderboard(page: number): Promise<BlizzardLeaderboardRow[]> {
+  const pageSize = 10;
+  const startPage = ((page - 1) * pageSize) + 1;
+
+  const requests = Array.from({ length: pageSize }, (_, i) => {
+    const apiPage = startPage + i;
+    return fetch(
+      `${CN_API_BASE}/game/ranks?mode_name=battlegrounds&season_id=${CN_SEASON_ID}&page=${apiPage}&page_size=25`,
+      { next: { revalidate: REVALIDATE_SECONDS } }
+    )
+      .then(async res => {
+        if (!res.ok) {
+          console.error(`[Blizzard CN] API error: ${res.status} for page ${apiPage}`);
+          return { code: 0, message: '', data: { list: [], total: 0 } };
+        }
+        return res.json() as Promise<CnLeaderboardResponse>;
+      })
+      .catch(err => {
+        console.error(`[Blizzard CN] Fetch error for page ${apiPage}:`, err);
+        return { code: 0, message: '', data: { list: [], total: 0 } };
+      });
+  });
+
+  const results = await Promise.all(requests);
+  const players: BlizzardLeaderboardRow[] = results
+    .flatMap(r => r.data?.list || [])
+    .map((item, idx) => ({
+      rank: item.position,
+      accountid: item.battle_tag,
+      rating: item.score,
+    }));
+
+  return players;
+}
+
 export async function getLeaderboard(region = 'EU', page = 1) {
-  const VALID_REGIONS = ['EU', 'US', 'AP'] as const;
+  const VALID_REGIONS = ['EU', 'US', 'AP', 'CN'] as const;
   if (!VALID_REGIONS.includes(region as typeof VALID_REGIONS[number])) {
     console.error(`[Blizzard] Invalid region: ${region}`);
     return [];
@@ -34,6 +84,36 @@ export async function getLeaderboard(region = 'EU', page = 1) {
   if (!Number.isInteger(page) || page < 1) {
     console.error(`[Blizzard] Invalid page: ${page}`);
     return [];
+  }
+
+  if (region === 'CN') {
+    const currentPlayers = await getCnLeaderboard(page);
+    if (currentPlayers.length === 0) return [];
+
+    void ingestLeaderboardSnapshot(region, currentPlayers);
+
+    const playerNames = currentPlayers.map(p => p.accountid);
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: snapshots } = await supabase
+      .from('leaderboard_history')
+      .select('accountId, rating, created_at')
+      .in('accountId', playerNames)
+      .gte('created_at', yesterday)
+      .order('created_at', { ascending: true });
+
+    const snapshotMap = new Map<string, number>();
+    for (const s of snapshots || []) {
+      const key = s.accountId.toLowerCase();
+      if (!snapshotMap.has(key)) {
+        snapshotMap.set(key, s.rating);
+      }
+    }
+
+    return currentPlayers.map(player => {
+      const oldestRating = snapshotMap.get(player.accountid.toLowerCase());
+      const lastRating = oldestRating !== undefined ? oldestRating : player.rating;
+      return { ...player, lastRating };
+    });
   }
 
   const pageSize = 10;

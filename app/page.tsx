@@ -28,6 +28,7 @@ export async function generateMetadata(
     EU: 'Europe',
     US: 'Americas',
     AP: 'Asia-Pacific',
+    CN: 'China',
   };
   const regionLabel = regionNames[region] || region;
 
@@ -76,7 +77,7 @@ export default async function Home({ searchParams }: Props) {
   const twitchStatuses = await getTwitchStatusesForLeaderboard(playerIds);
   const now = new Date().getTime();
 
-  const regions = ['EU', 'US', 'AP'];
+  const regions = ['EU', 'US', 'AP', 'CN'];
 
   return (
     <main style={{ minHeight: '100dvh' }}>

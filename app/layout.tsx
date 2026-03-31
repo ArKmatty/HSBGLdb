@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     default: "Hearthstone Battlegrounds Leaderboard — Live MMR Rankings",
     template: "%s | HS BG Leaderboard",
   },
-  description: "Track top Hearthstone Battlegrounds players across EU, US, and AP regions. Live MMR rankings, player stats, historical trends, and Twitch stream status.",
+  description: "Track top Hearthstone Battlegrounds players across EU, US, AP, and CN regions. Live MMR rankings, player stats, historical trends, and Twitch stream status.",
   keywords: ["Hearthstone", "Battlegrounds", "Leaderboard", "MMR", "Ranking", "Blizzard", "BG", "Top Players", "Live Stats"],
   authors: [{ name: "HS BG Leaderboard" }],
   openGraph: {
