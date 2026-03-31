@@ -73,14 +73,15 @@ export default async function RootLayout({
     },
   };
 
-  return (
-    <html lang={locale === 'it' ? 'it' : 'en'} className={`${inter.className} h-full antialiased`}>
-      <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-      </head>
+   return (
+     <html lang={locale === 'it' ? 'it' : 'en'} className={`${inter.className} h-full antialiased`}>
+       <head>
+         <link rel="icon" href="/logo.png" />
+         <script
+           type="application/ld+json"
+           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+         />
+       </head>
       <body className="min-h-full flex flex-col">
         <SiteNav />
         {children}

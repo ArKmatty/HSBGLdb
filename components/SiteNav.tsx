@@ -83,22 +83,18 @@ export default function SiteNav() {
             height: 48,
           }}
         >
-          <Link
-            href="/"
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: 8,
-              flexShrink: 0,
-            }}
-          >
-            <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.02em' }}>
-              BG
-            </span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Leaderboard
-            </span>
-          </Link>
+           <Link
+             href="/"
+             style={{
+               display: 'flex',
+               alignItems: 'center',
+               gap: 8,
+               flexShrink: 0,
+             }}
+           >
+             <img src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={24} height={24} style={{ objectFit: 'contain' }} />
+             <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.02em' }}>HSBGLdb</span>
+           </Link>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* Region tabs */}
