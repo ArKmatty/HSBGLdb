@@ -2,7 +2,7 @@ import type { Metadata, ResolvingMetadata } from 'next';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { getLeaderboard } from '../lib/blizzard';
-import { getTopMovers } from '../lib/stats';
+import { getTopMovers, getTopFallers } from '../lib/stats';
 import LeaderboardTable from '../components/LeaderboardTable';
 import TopMoversWidget from '../components/TopMoversWidget';
 import RecentSearches from '../components/RecentSearches';
@@ -68,104 +68,18 @@ export default async function Home({ searchParams }: Props) {
   const locale = detectLocale(await headers());
   const t = translations[locale];
 
-  const [players, topMovers] = await Promise.all([
+  const [players, topMovers, topFallers] = await Promise.all([
     getLeaderboard(region, currentPage),
-    getTopMovers(region)
+    getTopMovers(region),
+    getTopFallers(region),
   ]);
 
   const playerIds = players.map(p => p.accountid);
   const twitchStatuses = await getTwitchStatusesForLeaderboard(playerIds);
   const now = new Date().getTime();
 
-  const regions = ['EU', 'US', 'AP', 'CN'];
-
   return (
-    <main style={{ minHeight: '100dvh' }}>
-
-      {/* ── Header ── */}
-      <header style={{
-        position: 'relative',
-        borderBottom: '1px solid var(--border-dim)',
-        background: 'var(--bg-surface)',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 1,
-          background: 'linear-gradient(90deg, transparent, var(--accent), transparent)',
-        }} />
-
-        <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 20px 0' }}>
-          {/* Top bar: brand + region selector */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-              <span style={{
-                fontSize: 15,
-                fontWeight: 800,
-                color: 'var(--accent)',
-                letterSpacing: '-0.02em',
-              }}>
-                BG
-              </span>
-              <span style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: 'var(--text-muted)',
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-              }}>
-                Leaderboard
-              </span>
-            </div>
-
-            {/* Region selector */}
-            <nav aria-label="Region selector">
-              <div role="tablist" aria-label="Leaderboard regions" style={{ display: 'flex', background: 'var(--bg-base)', borderRadius: 8, padding: 2 }}>
-                {regions.map(r => (
-                  <Link
-                    key={r}
-                    href={`/?region=${r}&page=1`}
-                    role="tab"
-                    aria-selected={region === r}
-                    aria-controls="leaderboard-content"
-                    style={{
-                      padding: '10px 16px',
-                      borderRadius: 6,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      transition: 'all 150ms',
-                      background: region === r ? 'var(--bg-elevated)' : 'transparent',
-                      color: region === r ? 'var(--text-primary)' : 'var(--text-muted)',
-                    }}
-                  >
-                    {r}
-                  </Link>
-                ))}
-              </div>
-            </nav>
-          </div>
-
-          {/* Title */}
-          <div style={{ marginBottom: 20 }}>
-            <h1 style={{
-              fontSize: 'clamp(22px, 4vw, 32px)',
-              fontWeight: 800,
-              letterSpacing: '-0.03em',
-              color: 'var(--text-primary)',
-              margin: '0 0 4px',
-              lineHeight: 1.2,
-            }}>
-              {region} Battlegrounds
-            </h1>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, fontWeight: 400 }}>
-              {t.subtitle}
-            </p>
-          </div>
-        </div>
-      </header>
+    <main style={{ minHeight: '100dvh', background: 'var(--bg-base)' }}>
 
       {/* ── Freshness indicator ── */}
       <div style={{
@@ -179,8 +93,25 @@ export default async function Home({ searchParams }: Props) {
 
       {/* ── Content ── */}
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 20px 64px' }}>
+        {/* Page title */}
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{
+            fontSize: 'clamp(22px, 4vw, 32px)',
+            fontWeight: 800,
+            letterSpacing: '-0.03em',
+            color: 'var(--text-primary)',
+            margin: '0 0 4px',
+            lineHeight: 1.2,
+          }}>
+            {region} Battlegrounds
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, fontWeight: 400 }}>
+            {t.subtitle}
+          </p>
+        </div>
+
         <RecentSearches locale={locale} />
-        <TopMoversWidget players={topMovers} locale={locale} />
+        <TopMoversWidget players={topMovers} fallers={topFallers} locale={locale} />
         <LeaderboardTable players={players} twitchStatuses={twitchStatuses} locale={locale} />
 
         {/* Pagination */}

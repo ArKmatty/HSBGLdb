@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Plus, Check, AlertCircle, Loader2 } from "lucide-react";
 import { submitSocialLink } from "@/app/actions/socials";
 
@@ -40,7 +40,17 @@ export default function SocialLinksForm({ playerName }: { playerName: string }) 
     setSubmitted(false);
     setUsername("");
     setError(null);
+    document.body.style.overflow = '';
   };
+
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [open]);
 
   const selectedPlatform = PLATFORMS.find(p => p.key === platform);
 
@@ -77,6 +87,9 @@ export default function SocialLinksForm({ playerName }: { playerName: string }) 
 
       {open && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="social-modal-title"
           style={{
             position: "fixed",
             inset: 0,
@@ -89,6 +102,7 @@ export default function SocialLinksForm({ playerName }: { playerName: string }) 
             padding: 20,
           }}
           onClick={e => { if (e.target === e.currentTarget) reset(); }}
+          onKeyDown={e => { if (e.key === 'Escape') reset(); }}
         >
           <div
             style={{
@@ -101,7 +115,7 @@ export default function SocialLinksForm({ playerName }: { playerName: string }) 
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
+              <h3 id="social-modal-title" style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
                 Add social link
               </h3>
               <button

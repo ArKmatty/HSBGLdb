@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
+import { detectLocale } from "@/lib/i18n";
+import SiteNav from "@/components/SiteNav";
+import SiteFooter from "@/components/SiteFooter";
 import "./globals.css";
 
 const inter = Inter({
@@ -22,11 +26,13 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     siteName: "HS BG Leaderboard",
+    images: [{ url: "/api/og", width: 1200, height: 630, alt: "HS BG Leaderboard" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Hearthstone Battlegrounds Leaderboard",
     description: "Live MMR rankings for top Hearthstone Battlegrounds players across all regions.",
+    images: ["/api/og"],
   },
   robots: {
     index: true,
@@ -41,11 +47,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = detectLocale(await headers());
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -63,7 +70,7 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en" className={`${inter.className} h-full antialiased`}>
+    <html lang={locale === 'it' ? 'it' : 'en'} className={`${inter.className} h-full antialiased`}>
       <head>
         <script
           type="application/ld+json"
@@ -71,7 +78,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col">
+        <SiteNav />
         {children}
+        <SiteFooter />
         <Analytics />
       </body>
     </html>

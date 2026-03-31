@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp, TrendingDown, Minus, Tv } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Tv, ChevronUp, ChevronDown } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
 import { translations } from "@/lib/i18n";
 
@@ -14,10 +14,14 @@ interface Player {
   lastRating?: number;
 }
 
+type SortKey = 'rank' | 'name' | 'mmr' | 'delta';
+
 const RANK_COLORS: Record<number, string> = { 1: '#e8a838', 2: '#8b8fa3', 3: '#a0722a' };
 
 export default function LeaderboardTable({ players, twitchStatuses = {}, locale }: { players: Player[]; twitchStatuses?: Record<string, { isLive: boolean; twitchUsername?: string; title?: string; viewerCount?: number }>; locale: Locale }) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>('rank');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const router = useRouter();
   const t = translations[locale];
 
@@ -40,6 +44,31 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
   const filtered = players.filter(p =>
     p.accountid.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'rank' ? 'asc' : 'asc');
+    }
+  };
+
+  const getDelta = (p: Player) => p.lastRating ? p.rating - p.lastRating : 0;
+
+  const sorted = [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortKey === 'rank') cmp = a.rank - b.rank;
+    else if (sortKey === 'name') cmp = a.accountid.localeCompare(b.accountid);
+    else if (sortKey === 'mmr') cmp = a.rating - b.rating;
+    else if (sortKey === 'delta') cmp = getDelta(a) - getDelta(b);
+    return sortDir === 'desc' ? -cmp : cmp;
+  });
+
+  const SortIcon = ({ column }: { column: SortKey }) => {
+    if (sortKey !== column) return null;
+    return sortDir === 'asc' ? <ChevronUp size={10} style={{ marginLeft: 2, display: 'inline', verticalAlign: 'middle' }} /> : <ChevronDown size={10} style={{ marginLeft: 2, display: 'inline', verticalAlign: 'middle' }} />;
+  };
 
   return (
     <div>
@@ -72,7 +101,7 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
       {/* Meta row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '0 4px' }}>
         <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
-          {filtered.length} {t.players}
+          {sorted.length} {t.players}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 6px var(--green)', animation: 'pulse 2s infinite' }} />
@@ -91,24 +120,39 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 420 }} aria-label="Leaderboard rankings">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-dim)' }}>
-                {[t.rank, t.player, t.mmr, 'Δ'].map((h, i) => (
-                  <th key={h} className={i === 3 ? 'hide-mobile' : ''} style={{
-                    padding: '10px 16px',
-                    textAlign: i === 3 ? 'center' : 'left',
-                    fontSize: 10,
-                    fontWeight: 800,
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.14em',
-                    background: 'var(--bg-elevated)',
-                  }}>
-                    {h}
+                {([
+                  { key: 'rank' as SortKey, label: t.rank, align: 'left' as const },
+                  { key: 'name' as SortKey, label: t.player, align: 'left' as const },
+                  { key: 'mmr' as SortKey, label: t.mmr, align: 'left' as const },
+                  { key: 'delta' as SortKey, label: 'Δ', align: 'center' as const },
+                ]).map(({ key, label, align }, i) => (
+                  <th
+                    key={key}
+                    className={i === 3 ? 'hide-mobile' : ''}
+                    onClick={() => handleSort(key)}
+                    role="columnheader"
+                    aria-sort={sortKey === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    style={{
+                      padding: '10px 16px',
+                      textAlign: align,
+                      fontSize: 10,
+                      fontWeight: 800,
+                      color: sortKey === key ? 'var(--text-primary)' : 'var(--text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.14em',
+                      background: 'var(--bg-elevated)',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      transition: 'color 150ms',
+                    }}
+                  >
+                    {label}<SortIcon column={key} />
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((player, idx) => {
+              {sorted.map((player, idx) => {
                 const diff = player.lastRating ? player.rating - player.lastRating : 0;
                 const twitchData = twitchStatuses[player.accountid.toLowerCase()];
                 const isLive = twitchData?.isLive;

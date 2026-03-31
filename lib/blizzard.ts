@@ -1,7 +1,10 @@
 import { supabase } from './supabase';
 import { ingestLeaderboardSnapshot } from './ingest';
+import { unstable_cache } from 'next/cache';
 
 const REVALIDATE_SECONDS = 60;
+const CACHE_LEADERBOARD_SECONDS = 60;
+const CACHE_PLAYER_LIVE_SECONDS = 120;
 const CN_API_BASE = 'https://webapi.blizzard.cn/hs-rank-api-server/api';
 const CN_SEASON_ID = 17;
 
@@ -65,7 +68,7 @@ async function getCnLeaderboard(page: number): Promise<BlizzardLeaderboardRow[]>
   const results = await Promise.all(requests);
   const players: BlizzardLeaderboardRow[] = results
     .flatMap(r => r.data?.list || [])
-    .map((item, idx) => ({
+    .map((item) => ({
       rank: item.position,
       accountid: item.battle_tag,
       rating: item.score,
@@ -74,20 +77,77 @@ async function getCnLeaderboard(page: number): Promise<BlizzardLeaderboardRow[]>
   return players;
 }
 
-export async function getLeaderboard(region = 'EU', page = 1) {
-  const VALID_REGIONS = ['EU', 'US', 'AP', 'CN'] as const;
-  if (!VALID_REGIONS.includes(region as typeof VALID_REGIONS[number])) {
-    console.error(`[Blizzard] Invalid region: ${region}`);
-    return [];
-  }
+export const getLeaderboard = unstable_cache(
+  async (region = 'EU', page = 1) => {
+    const VALID_REGIONS = ['EU', 'US', 'AP', 'CN'] as const;
+    if (!VALID_REGIONS.includes(region as typeof VALID_REGIONS[number])) {
+      console.error(`[Blizzard] Invalid region: ${region}`);
+      return [];
+    }
 
-  if (!Number.isInteger(page) || page < 1) {
-    console.error(`[Blizzard] Invalid page: ${page}`);
-    return [];
-  }
+    if (!Number.isInteger(page) || page < 1) {
+      console.error(`[Blizzard] Invalid page: ${page}`);
+      return [];
+    }
 
-  if (region === 'CN') {
-    const currentPlayers = await getCnLeaderboard(page);
+    if (region === 'CN') {
+      const currentPlayers = await getCnLeaderboard(page);
+      if (currentPlayers.length === 0) return [];
+
+      void ingestLeaderboardSnapshot(region, currentPlayers);
+
+      const playerNames = currentPlayers.map(p => p.accountid);
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: snapshots } = await supabase
+        .from('leaderboard_history')
+        .select('accountId, rating, created_at, region')
+        .in('accountId', playerNames)
+        .eq('region', region)
+        .gte('created_at', yesterday)
+        .order('created_at', { ascending: true });
+
+      const snapshotMap = new Map<string, number>();
+      for (const s of snapshots || []) {
+        const key = s.accountId.toLowerCase();
+        if (!snapshotMap.has(key)) {
+          snapshotMap.set(key, s.rating);
+        }
+      }
+
+      return currentPlayers.map(player => {
+        const oldestRating = snapshotMap.get(player.accountid.toLowerCase());
+        const lastRating = oldestRating !== undefined ? oldestRating : player.rating;
+        return { ...player, lastRating };
+      });
+    }
+
+    const pageSize = 10;
+    const startPage = ((page - 1) * pageSize) + 1;
+
+    const requests = Array.from({ length: pageSize }, (_, i) => {
+      const apiPage = startPage + i;
+      return fetch(
+        `https://hearthstone.blizzard.com/en-us/api/community/leaderboardsData?region=${region}&leaderboardId=battlegrounds&page=${apiPage}`,
+        { next: { revalidate: REVALIDATE_SECONDS } }
+      )
+        .then(res => {
+          if (!res.ok) {
+            console.error(`[Blizzard] API error: ${res.status} for page ${apiPage}`);
+            return { leaderboard: { rows: [] } };
+          }
+          return res.json();
+        })
+        .catch(err => {
+          console.error(`[Blizzard] Fetch error for page ${apiPage}:`, err);
+          return { leaderboard: { rows: [] } };
+        });
+    });
+
+    const results = await Promise.all(requests);
+    const currentPlayers = results
+      .filter(isValidLeaderboardPage)
+      .flatMap(data => data.leaderboard?.rows || []);
+
     if (currentPlayers.length === 0) return [];
 
     void ingestLeaderboardSnapshot(region, currentPlayers);
@@ -110,124 +170,77 @@ export async function getLeaderboard(region = 'EU', page = 1) {
       }
     }
 
-    return currentPlayers.map(player => {
+    const playersWithTrend = currentPlayers.map(player => {
       const oldestRating = snapshotMap.get(player.accountid.toLowerCase());
       const lastRating = oldestRating !== undefined ? oldestRating : player.rating;
-      return { ...player, lastRating };
+      return {
+        ...player,
+        lastRating,
+      };
     });
-  }
 
-  const pageSize = 10;
-  const startPage = ((page - 1) * pageSize) + 1;
+    return playersWithTrend;
+  },
+  ['leaderboard'],
+  { revalidate: CACHE_LEADERBOARD_SECONDS, tags: ['leaderboard'] }
+);
 
-  const requests = Array.from({ length: pageSize }, (_, i) => {
-    const apiPage = startPage + i;
-    return fetch(
-      `https://hearthstone.blizzard.com/en-us/api/community/leaderboardsData?region=${region}&leaderboardId=battlegrounds&page=${apiPage}`,
-      { next: { revalidate: REVALIDATE_SECONDS } }
-    )
-      .then(res => {
-        if (!res.ok) {
-          console.error(`[Blizzard] API error: ${res.status} for page ${apiPage}`);
-          return { leaderboard: { rows: [] } };
-        }
-        return res.json();
-      })
-      .catch(err => {
-        console.error(`[Blizzard] Fetch error for page ${apiPage}:`, err);
-        return { leaderboard: { rows: [] } };
-      });
-  });
+export const getPlayerLiveStats = unstable_cache(
+  async (name: string): Promise<BlizzardPlayerLive | null> => {
+    const regions = ['EU', 'US', 'AP'];
+    const PREFERRED_PAGES = 10;
+    const OTHER_PAGES = 4;
 
-  const results = await Promise.all(requests);
-  const currentPlayers = results
-    .filter(isValidLeaderboardPage)
-    .flatMap(data => data.leaderboard?.rows || []);
-
-  if (currentPlayers.length === 0) return [];
-
-  void ingestLeaderboardSnapshot(region, currentPlayers);
-
-  const playerNames = currentPlayers.map(p => p.accountid);
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { data: snapshots } = await supabase
-    .from('leaderboard_history')
-    .select('accountId, rating, created_at, region')
-    .in('accountId', playerNames)
-    .eq('region', region)
-    .gte('created_at', yesterday)
-    .order('created_at', { ascending: true });
-
-  const snapshotMap = new Map<string, number>();
-  for (const s of snapshots || []) {
-    const key = s.accountId.toLowerCase();
-    if (!snapshotMap.has(key)) {
-      snapshotMap.set(key, s.rating);
-    }
-  }
-
-  const playersWithTrend = currentPlayers.map(player => {
-    const oldestRating = snapshotMap.get(player.accountid.toLowerCase());
-    const lastRating = oldestRating !== undefined ? oldestRating : player.rating;
-    return {
-      ...player,
-      lastRating,
-    };
-  });
-
-  return playersWithTrend;
-}
-
-export async function getPlayerLiveStats(name: string): Promise<BlizzardPlayerLive | null> {
-  const regions = ['EU', 'US', 'AP'];
-  const PAGES_TO_SCAN = 8;
-
-  let preferredRegion: string | null = null;
-  try {
-    const { data: history } = await supabase
-      .from('leaderboard_history')
-      .select('region')
-      .eq('accountId', name)
-      .order('created_at', { ascending: false })
-      .limit(1);
-    if (history?.[0]?.region) {
-      preferredRegion = history[0].region;
-    }
-  } catch {
-    // Ignore — fall back to default order
-  }
-
-  const orderedRegions = preferredRegion
-    ? [preferredRegion, ...regions.filter(r => r !== preferredRegion)]
-    : regions;
-
-  for (const region of orderedRegions) {
+    let preferredRegion: string | null = null;
     try {
-      const pageRequests = Array.from({ length: PAGES_TO_SCAN }, (_, i) =>
-        fetch(
-          `https://hearthstone.blizzard.com/en-us/api/community/leaderboardsData?region=${region}&leaderboardId=battlegrounds&page=${i + 1}`,
-          { next: { revalidate: REVALIDATE_SECONDS } }
-        )
-          .then(res => {
-            if (!res.ok) return { leaderboard: { rows: [] } };
-            return res.json();
-          })
-          .catch(() => ({ leaderboard: { rows: [] } }))
-      );
-
-      const pagesResults = await Promise.all(pageRequests);
-      const rows = pagesResults.flatMap(d => d.leaderboard?.rows || []);
-      const match = rows.find(
-        (r: { accountid: string }) => r.accountid.toLowerCase() === name.toLowerCase()
-      );
-
-      if (match) {
-        return { ...match, region };
+      const { data: history } = await supabase
+        .from('leaderboard_history')
+        .select('region')
+        .eq('accountId', name)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (history?.[0]?.region) {
+        preferredRegion = history[0].region;
       }
-    } catch (e) {
-      console.error(`[Blizzard] Error scanning ${region}:`, e);
+    } catch {
+      // Ignore — fall back to default order
     }
-  }
 
-  return null;
-}
+    const orderedRegions = preferredRegion
+      ? [preferredRegion, ...regions.filter(r => r !== preferredRegion)]
+      : regions;
+
+    for (const region of orderedRegions) {
+      try {
+        const pagesToScan = region === preferredRegion ? PREFERRED_PAGES : OTHER_PAGES;
+        const pageRequests = Array.from({ length: pagesToScan }, (_, i) =>
+          fetch(
+            `https://hearthstone.blizzard.com/en-us/api/community/leaderboardsData?region=${region}&leaderboardId=battlegrounds&page=${i + 1}`,
+            { next: { revalidate: REVALIDATE_SECONDS } }
+          )
+            .then(res => {
+              if (!res.ok) return { leaderboard: { rows: [] } };
+              return res.json();
+            })
+            .catch(() => ({ leaderboard: { rows: [] } }))
+        );
+
+        const pagesResults = await Promise.all(pageRequests);
+        const rows = pagesResults.flatMap(d => d.leaderboard?.rows || []);
+        const match = rows.find(
+          (r: { accountid: string }) => r.accountid.toLowerCase() === name.toLowerCase()
+        );
+
+        if (match) {
+          return { ...match, region };
+        }
+      } catch (e) {
+        console.error(`[Blizzard] Error scanning ${region}:`, e);
+      }
+    }
+
+    return null;
+  },
+  ['player-live'],
+  { revalidate: CACHE_PLAYER_LIVE_SECONDS, tags: ['player-live'] }
+);

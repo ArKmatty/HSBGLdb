@@ -46,3 +46,42 @@ export const getTopMovers = unstable_cache(
   ['top-movers-cache'], // base cache key
   { revalidate: 1800, tags: ['movers'] } // revalidate ogni 30 minuti (1800 secondi)
 );
+
+export const getTopFallers = unstable_cache(
+  async (region: string = 'EU') => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    const { data, error } = await supabase
+      .from('leaderboard_history')
+      .select('accountId, rating')
+      .eq('region', region)
+      .gte('created_at', yesterday)
+      .order('created_at', { ascending: true });
+
+    if (error || !data || data.length === 0) return [];
+
+    const playerStats: Record<string, { firstRating: number; lastRating: number }> = {};
+
+    for (const row of data) {
+      const name = row.accountId;
+      if (!playerStats[name]) {
+        playerStats[name] = { firstRating: row.rating, lastRating: row.rating };
+      } else {
+        playerStats[name].lastRating = row.rating;
+      }
+    }
+
+    const fallers = Object.keys(playerStats).map(accountid => {
+      const { firstRating, lastRating } = playerStats[accountid];
+      const diff = lastRating - firstRating;
+      return { accountid, diff, rating: lastRating };
+    });
+
+    return fallers
+      .filter(m => m.diff < 0)
+      .sort((a, b) => a.diff - b.diff)
+      .slice(0, 5);
+  },
+  ['top-fallers-cache'],
+  { revalidate: 1800, tags: ['fallers'] }
+);

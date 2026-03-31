@@ -19,7 +19,11 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
   useEffect(() => {
     if (open && inputRef.current) {
       inputRef.current.focus();
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
     }
+    return () => { document.body.style.overflow = ''; };
   }, [open]);
 
   const handleSearch = useCallback(async (query: string) => {
@@ -101,6 +105,9 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="compare-modal-title"
       style={{
         position: 'fixed',
         inset: 0,
@@ -113,6 +120,7 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
         padding: 20,
       }}
       onClick={e => { if (e.target === e.currentTarget) handleClose(); }}
+      onKeyDown={e => { if (e.key === 'Escape') handleClose(); }}
     >
       <div
         style={{
@@ -125,7 +133,7 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+          <h3 id="compare-modal-title" style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
             Compare players
           </h3>
           <button
