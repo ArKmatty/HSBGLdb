@@ -134,9 +134,10 @@ export default function PlayerPage() {
       });
     }
 
-    // Filter out consecutive duplicate MMR values
+    // Filter out consecutive duplicate MMR values (but keep at least 2 points for graph)
     const deduped = aggregated.filter((point, i) => {
       if (i === 0) return true;
+      if (aggregated.length - i === 1) return true; // Keep last point
       return point.mmr !== aggregated[i - 1].mmr;
     });
 

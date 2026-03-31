@@ -159,6 +159,7 @@ export default function ComparePage() {
       };
     }).filter((point, i, arr) => {
       if (i === 0) return true;
+      if (arr.length - i === 1) return true; // Keep last point
       const prev = arr[i - 1];
       return point[players[0].name] !== prev[players[0].name] || point[players[1].name] !== prev[players[1].name];
     });
