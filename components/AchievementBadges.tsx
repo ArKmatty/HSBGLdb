@@ -1,4 +1,4 @@
-import { Trophy, Star, Zap, Flame, Target } from 'lucide-react';
+import { Trophy, Zap, Flame, Target } from 'lucide-react';
 
 interface Achievement {
   id: string;
@@ -10,22 +10,13 @@ interface Achievement {
 }
 
 interface AchievementBadgesProps {
-  peakMmr: number;
   currentRank: number;
   gamesPlayed: number;
   gain7d: number;
 }
 
-export default function AchievementBadges({ peakMmr, currentRank, gamesPlayed, gain7d }: AchievementBadgesProps) {
+export default function AchievementBadges({ currentRank, gamesPlayed, gain7d }: AchievementBadgesProps) {
   const achievements: Achievement[] = [
-    {
-      id: 'peak-6000',
-      label: 'Legend',
-      icon: <Star size={16} />,
-      color: '#a78bfa',
-      unlocked: peakMmr >= 6000,
-      hint: 'Reach 6000 MMR',
-    },
     {
       id: 'top-100',
       label: 'Top 100',

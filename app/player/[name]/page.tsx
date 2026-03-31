@@ -536,7 +536,6 @@ export default function PlayerPage() {
         {/* Achievement badges */}
         {!loadingHistory && stats.peak > 0 && (
           <AchievementBadges
-            peakMmr={stats.peak}
             currentRank={liveData?.rank ?? 0}
             gamesPlayed={stats.games}
             gain7d={stats.gain7d}
