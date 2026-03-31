@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { TrendingUp, TrendingDown, Minus, Tv, ChevronUp, ChevronDown, Crown } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
 import { translations } from "@/lib/i18n";
+import { EmptyState } from "./EmptyState";
 
 interface Player {
   rank: number;
@@ -35,9 +36,11 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
 
   if (!players || players.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)', fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-        {t.noPlayers}
-      </div>
+      <EmptyState
+        type="no-data"
+        title={t.noPlayers}
+        description="No players found in this region yet."
+      />
     );
   }
 

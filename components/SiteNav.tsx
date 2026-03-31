@@ -4,6 +4,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { Search, TrendingUp, Sun, Moon } from 'lucide-react';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { searchPlayers } from '@/app/actions/player';
+import { EmptyState } from './EmptyState';
 
 const REGIONS = ['EU', 'US', 'AP', 'CN'] as const;
 
@@ -346,9 +347,11 @@ export default function SiteNav() {
             )}
 
             {query.length >= 2 && !searching && suggestions.length === 0 && (
-              <div style={{ marginTop: 8, padding: '12px', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
-                No players found
-              </div>
+              <EmptyState
+                type="no-results"
+                title="No players found"
+                description="Try a different search term"
+              />
             )}
           </div>
         </div>
