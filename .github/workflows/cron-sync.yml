@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Trigger leaderboard sync
         run: |
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
+          RESPONSE=$(curl -s -L -w "\n%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.SITE_URL }}/api/cron/sync")
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
