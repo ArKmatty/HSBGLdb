@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function SiteFooter() {
   return (
@@ -21,12 +22,12 @@ export default function SiteFooter() {
            gap: 16,
          }}
        >
-         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-           <img src="/logo.png" alt="Logo" width={20} height={20} style={{ objectFit: 'contain' }} />
-           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-             Data from Blizzard Entertainment API. Not affiliated with or endorsed by Blizzard Entertainment.
-           </span>
-         </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Image src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={20} height={20} />
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              Data from Blizzard Entertainment API. Not affiliated with or endorsed by Blizzard Entertainment.
+            </span>
+          </div>
          <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
            <Link
              href="https://github.com/ArKmatty/HSBGLdb"

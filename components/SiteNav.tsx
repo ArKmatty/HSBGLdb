@@ -1,5 +1,6 @@
 "use client";
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Search, TrendingUp } from 'lucide-react';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -83,18 +84,18 @@ export default function SiteNav() {
             height: 48,
           }}
         >
-           <Link
-             href="/"
-             style={{
-               display: 'flex',
-               alignItems: 'center',
-               gap: 8,
-               flexShrink: 0,
-             }}
-           >
-             <img src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={24} height={24} style={{ objectFit: 'contain' }} />
-             <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.02em' }}>HSBGLdb</span>
-           </Link>
+            <Link
+              href="/"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                flexShrink: 0,
+              }}
+            >
+              <Image src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={24} height={24} />
+              <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.02em' }}>HSBGLdb</span>
+            </Link>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* Region tabs */}
