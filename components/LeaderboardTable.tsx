@@ -168,18 +168,10 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
                 return (
                   <tr
                     key={player.rank}
+                    className="leaderboard-row"
                     style={{
                       borderTop: idx === 0 ? 'none' : '1px solid var(--border-dim)',
                       background: isTop3 ? 'rgba(232,168,56,0.02)' : 'transparent',
-                      transition: 'background 150ms, transform 150ms',
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = 'var(--bg-elevated)';
-                      e.currentTarget.style.transform = 'scale(1.005)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = isTop3 ? 'rgba(232,168,56,0.02)' : 'transparent';
-                      e.currentTarget.style.transform = 'scale(1)';
                     }}
                   >
                     {/* Rank */}
