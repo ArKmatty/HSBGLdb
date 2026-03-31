@@ -562,7 +562,7 @@ export default function PlayerPage() {
                     tickFormatter={(ts: number) => formatXAxisDate(ts, timeRange, localeStr)}
                   />
                   <YAxis
-                    domain={['auto', 'auto']}
+                    domain={['dataMin - 50', 'dataMax + 50']}
                     stroke="var(--text-muted)"
                     fontSize={10}
                     tickLine={false}
@@ -586,19 +586,19 @@ export default function PlayerPage() {
                     labelFormatter={(label: unknown) => formatTooltipDate(label as number, localeStr)}
                   />
                   <Area
-                    type="monotoneX"
+                    type="linear"
                     dataKey="mmr"
                     stroke="var(--accent)"
-                    strokeWidth={2}
+                    strokeWidth={1.5}
                     fillOpacity={1}
                     fill="url(#mmrGradient)"
                     isAnimationActive={false}
-                    activeDot={{ r: 5, fill: 'var(--accent)', stroke: 'var(--bg-surface)', strokeWidth: 2 }}
+                    activeDot={{ r: 4, fill: 'var(--accent)', stroke: 'var(--bg-surface)', strokeWidth: 2 }}
                     dot={false}
                   />
                   <defs>
                     <linearGradient id="mmrGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.15} />
+                      <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.12} />
                       <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.01} />
                     </linearGradient>
                   </defs>

@@ -261,8 +261,13 @@ export default function ComparePage() {
                     tickFormatter={(ts: number) => new Date(ts).toLocaleDateString(locale === 'it' ? 'it-IT' : 'en-US', { month: 'short', day: 'numeric' })}
                   />
                   <YAxis
-                    domain={['auto', 'auto']} stroke="var(--text-muted)"
-                    fontSize={10} tickLine={false} axisLine={false} dx={-8} fontWeight={500}
+                    domain={['dataMin - 50', 'dataMax + 50']}
+                    stroke="var(--text-muted)"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    dx={-8}
+                    fontWeight={500}
                     tickFormatter={(val: number) => val.toLocaleString()}
                   />
                   <Tooltip
@@ -278,15 +283,15 @@ export default function ComparePage() {
                   {players.map((p, idx) => (
                     <Area
                       key={p.name}
-                      type="monotoneX"
+                      type="linear"
                       dataKey={p.name}
                       stroke={COLORS[idx]}
-                      strokeWidth={2}
+                      strokeWidth={1.5}
                       fillOpacity={1}
                       fill={`${COLORS[idx]}15`}
                       isAnimationActive={false}
                       connectNulls={false}
-                      activeDot={{ r: 5, fill: COLORS[idx], stroke: 'var(--bg-surface)', strokeWidth: 2 }}
+                      activeDot={{ r: 4, fill: COLORS[idx], stroke: 'var(--bg-surface)', strokeWidth: 2 }}
                       dot={false}
                     />
                   ))}
