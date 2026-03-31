@@ -2,10 +2,11 @@ import { supabase } from '@/lib/supabase';
 
 export default async function sitemap() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://your-domain.com');
+  const cleanBaseUrl = baseUrl.replace(/\/$/, '');
   const regions = ['EU', 'US', 'AP', 'CN'];
 
   const regionUrls = regions.map(region => ({
-    url: `${baseUrl}/?region=${region}`,
+    url: `${cleanBaseUrl}/?region=${region}`,
     lastModified: new Date(),
     changeFrequency: 'hourly' as const,
     priority: 0.9,
@@ -29,7 +30,7 @@ export default async function sitemap() {
           return true;
         })
         .map(p => ({
-          url: `${baseUrl}/player/${encodeURIComponent(p.accountId)}`,
+          url: `${cleanBaseUrl}/player/${encodeURIComponent(p.accountId)}`,
           lastModified: new Date(p.created_at),
           changeFrequency: 'daily' as const,
           priority: 0.7,
@@ -41,7 +42,7 @@ export default async function sitemap() {
 
   return [
     {
-      url: baseUrl,
+      url: cleanBaseUrl,
       lastModified: new Date(),
       changeFrequency: 'hourly' as const,
       priority: 1,
