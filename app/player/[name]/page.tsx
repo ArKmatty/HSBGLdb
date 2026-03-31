@@ -11,6 +11,7 @@ import ScrollToTop from '@/components/ScrollToTop';
 import SocialLinksForm from '@/components/SocialLinksForm';
 import PlayerCompare from '@/components/PlayerCompare';
 import AchievementBadges from '@/components/AchievementBadges';
+import { ChartSkeleton } from '@/components/Skeleton';
 
 type TimeRange = '24h' | '7d' | '30d' | 'all';
 
@@ -644,12 +645,7 @@ export default function PlayerPage() {
                 </AreaChart>
               </ResponsiveContainer>
             ) : loadingHistory ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}>
-                <Loader2 size={24} color="var(--accent)" className="animate-spin" />
-                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  {t.searchingHistory}
-                </span>
-              </div>
+              <ChartSkeleton />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, color: 'var(--text-muted)' }}>
                 <Activity size={32} color="var(--text-muted)" opacity={0.4} />

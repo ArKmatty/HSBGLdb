@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { getPlayerHistory, getPlayerLive } from '@/app/actions/player';
 import { detectLocaleClient, translations } from '@/lib/i18n';
 import ScrollToTop from '@/components/ScrollToTop';
+import { ChartSkeleton } from '@/components/Skeleton';
 
 type TimeRange = '24h' | '7d' | '30d' | 'all';
 
@@ -284,12 +285,7 @@ export default function ComparePage() {
 
           <div style={{ height: 'clamp(250px, 45vw, 400px)' }}>
             {isLoading ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}>
-                <Loader2 size={24} color="var(--accent)" className="animate-spin" />
-                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  Loading comparison...
-                </span>
-              </div>
+              <ChartSkeleton />
             ) : chartData.length > 1 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
