@@ -25,21 +25,22 @@ export default function AdminPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    checkAuth();
+    let cancelled = false;
+    void (async () => {
+      const result = await getPendingSubmissions();
+      if (cancelled) return;
+      if (result.success) {
+        setAuthenticated(true);
+        setSubmissions(result.submissions || []);
+      } else if (result.error === "Unauthorized.") {
+        setAuthenticated(false);
+      } else {
+        setFetchError(result.error || "Unknown error");
+        setAuthenticated(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
-
-  async function checkAuth() {
-    const result = await getPendingSubmissions();
-    if (result.success) {
-      setAuthenticated(true);
-      setSubmissions(result.submissions || []);
-    } else if (result.error === "Unauthorized.") {
-      setAuthenticated(false);
-    } else {
-      setFetchError(result.error || "Unknown error");
-      setAuthenticated(false);
-    }
-  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();

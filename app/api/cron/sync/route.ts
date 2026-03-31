@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const allPlayersToInsert: any[] = [];
+    const allPlayersToInsert: Array<{ accountId: string; rating: number; rank: number; region: string; created_at: string }> = [];
 
     // Loop sequenziale per sicurezza (evitare rate-limiting) o Parallelo se le api lo reggono. 
     // Usiamo fetch in parallelo per le singole pagine della regione, mentre le regioni vanno una alla volta
@@ -61,8 +61,9 @@ export async function GET(request: Request) {
       message: `Sync Completato. Nuovi fotogrammi storici salvati: ${allPlayersToInsert.length}` 
     });
 
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Errore interno';
     console.error("[CRON JOB] Errore fatale:", error);
-    return NextResponse.json({ success: false, error: error.message || 'Errore interno' }, { status: 500 });
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

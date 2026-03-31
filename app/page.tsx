@@ -7,7 +7,7 @@ import TopMoversWidget from '../components/TopMoversWidget';
 import RecentSearches from '../components/RecentSearches';
 import ScrollToTop from '../components/ScrollToTop';
 import { getTwitchStatusesForLeaderboard } from './actions/twitch';
-import { detectLocale, translations, type Locale } from '@/lib/i18n';
+import { detectLocale, translations } from '@/lib/i18n';
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ region?: string, page?: string }> }) {
   const params = await searchParams;
@@ -69,25 +69,30 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
             </div>
 
             {/* Region selector */}
-            <div style={{ display: 'flex', background: 'var(--bg-base)', borderRadius: 8, padding: 2 }}>
-              {regions.map(r => (
-                <Link
-                  key={r}
-                  href={`/?region=${r}&page=1`}
-                  style={{
-                    padding: '10px 16px',
-                    borderRadius: 6,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    transition: 'all 150ms',
-                    background: region === r ? 'var(--bg-elevated)' : 'transparent',
-                    color: region === r ? 'var(--text-primary)' : 'var(--text-muted)',
-                  }}
-                >
-                  {r}
-                </Link>
-              ))}
-            </div>
+            <nav aria-label="Region selector">
+              <div role="tablist" aria-label="Leaderboard regions" style={{ display: 'flex', background: 'var(--bg-base)', borderRadius: 8, padding: 2 }}>
+                {regions.map(r => (
+                  <Link
+                    key={r}
+                    href={`/?region=${r}&page=1`}
+                    role="tab"
+                    aria-selected={region === r}
+                    aria-controls="leaderboard-content"
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      transition: 'all 150ms',
+                      background: region === r ? 'var(--bg-elevated)' : 'transparent',
+                      color: region === r ? 'var(--text-primary)' : 'var(--text-muted)',
+                    }}
+                  >
+                    {r}
+                  </Link>
+                ))}
+              </div>
+            </nav>
           </div>
 
           {/* Title */}
@@ -116,7 +121,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <LeaderboardTable players={players} twitchStatuses={twitchStatuses} locale={locale} />
 
         {/* Pagination */}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 28 }}>
+        <nav aria-label="Pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 28 }}>
           {currentPage > 1 && (
             <Link
               href={`/?region=${region}&page=${currentPage - 1}`}
@@ -154,7 +159,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
               {t.next}
             </Link>
           )}
-        </div>
+        </nav>
       </div>
       <ScrollToTop />
     </main>

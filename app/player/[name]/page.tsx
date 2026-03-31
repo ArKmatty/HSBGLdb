@@ -25,7 +25,6 @@ interface LiveData {
   rank: number;
   region: string;
   accountid: string;
-  [key: string]: unknown;
 }
 
 interface TwitchData {
@@ -120,15 +119,6 @@ export default function PlayerPage() {
   const localeStr = locale === 'it' ? 'it-IT' : 'en-US';
 
   useEffect(() => {
-    if (decodedName) {
-      const saved = localStorage.getItem('recentSearches');
-      let recent = saved ? JSON.parse(saved) : [];
-      recent = [decodedName, ...recent.filter((n: string) => n !== decodedName)].slice(0, 5);
-      localStorage.setItem('recentSearches', JSON.stringify(recent));
-    }
-  }, [decodedName]);
-
-  useEffect(() => {
     async function fetchAll() {
       setLoadingHistory(true);
       setLoadingLive(true);
@@ -201,7 +191,7 @@ export default function PlayerPage() {
     }
     
     fetchAll();
-  }, [decodedName]);
+  }, [decodedName, localeStr, t]);
 
   const isNewPeak = (liveData?.rating ?? 0) > stats.peak && stats.peak > 0;
 

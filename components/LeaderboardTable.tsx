@@ -16,7 +16,7 @@ interface Player {
 
 const RANK_COLORS: Record<number, string> = { 1: '#e8a838', 2: '#8b8fa3', 3: '#a0722a' };
 
-export default function LeaderboardTable({ players, twitchStatuses = {}, locale }: { players: Player[]; twitchStatuses?: Record<string, any>; locale: Locale }) {
+export default function LeaderboardTable({ players, twitchStatuses = {}, locale }: { players: Player[]; twitchStatuses?: Record<string, { isLive: boolean; twitchUsername?: string; title?: string; viewerCount?: number }>; locale: Locale }) {
   const [searchTerm, setSearchTerm] = useState("");
   const router = useRouter();
   const t = translations[locale];
@@ -50,6 +50,7 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
           placeholder={t.searchPlaceholder}
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
+          aria-label={t.searchPlaceholder}
           style={{
             width: '100%',
             padding: '12px 18px',
@@ -87,7 +88,7 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
         background: 'var(--bg-surface)',
       }}>
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 420 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 420 }} aria-label="Leaderboard rankings">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-dim)' }}>
                 {[t.rank, t.player, t.mmr, 'Δ'].map((h, i) => (
@@ -159,7 +160,7 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
                         </Link>
                         {isLive && (
                           <a
-                            href={`https://twitch.tv/${twitchData.username}`}
+                            href={`https://twitch.tv/${twitchData.twitchUsername}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{

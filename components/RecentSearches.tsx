@@ -1,24 +1,54 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Clock, X } from 'lucide-react';
 import type { Locale } from '@/lib/i18n';
 import { translations } from '@/lib/i18n';
 
+const EMPTY_ARRAY: string[] = [];
+
+let cachedRecent: string[] = EMPTY_ARRAY;
+
+function getSnapshot(): string[] {
+  try {
+    const saved = localStorage.getItem('recentSearches');
+    if (!saved) {
+      cachedRecent = EMPTY_ARRAY;
+      return EMPTY_ARRAY;
+    }
+    const parsed = JSON.parse(saved) as string[];
+    if (cachedRecent === EMPTY_ARRAY || JSON.stringify(cachedRecent) !== JSON.stringify(parsed)) {
+      cachedRecent = parsed;
+    }
+    return cachedRecent;
+  } catch {
+    cachedRecent = EMPTY_ARRAY;
+    return EMPTY_ARRAY;
+  }
+}
+
+function subscribe(onStoreChange: () => void) {
+  const handler = (e: StorageEvent) => {
+    if (e.key === 'recentSearches') {
+      onStoreChange();
+    }
+  };
+  window.addEventListener('storage', handler);
+  return () => window.removeEventListener('storage', handler);
+}
+
 export default function RecentSearches({ locale }: { locale: Locale }) {
-  const [recent, setRecent] = useState<string[]>([]);
+  const recent = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY_ARRAY);
+  const recentRef = useRef(recent);
+  recentRef.current = recent;
   const t = translations[locale];
 
-  useEffect(() => {
-    const saved = localStorage.getItem('recentSearches');
-    if (saved) setRecent(JSON.parse(saved));
-  }, []);
-
-  const remove = (name: string) => {
-    const updated = recent.filter(n => n !== name);
-    setRecent(updated);
+  const remove = useCallback((name: string) => {
+    const updated = recentRef.current.filter(n => n !== name);
     localStorage.setItem('recentSearches', JSON.stringify(updated));
-  };
+    cachedRecent = updated;
+    window.dispatchEvent(new StorageEvent('storage', { key: 'recentSearches' }));
+  }, []);
 
   if (recent.length === 0) return null;
 

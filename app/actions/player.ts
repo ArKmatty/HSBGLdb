@@ -18,7 +18,7 @@ export async function getPlayerHistory(name: string) {
 
     console.log(`[Perf] History for ${name} fetched in ${Date.now() - start}ms`);
     return { success: true, history: history || [] };
-  } catch (error: any) {
+  } catch (error) {
     console.error("History Action Error:", error);
     return { success: false, error: "Database error" };
   }
@@ -53,7 +53,7 @@ export async function getPlayerLive(name: string, lastHistoryRating?: number, la
     }
 
     return { success: true, live };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Live Action Error:", error);
     return { success: false, error: "Live data unavailable" };
   }

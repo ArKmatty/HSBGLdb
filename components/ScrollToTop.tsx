@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowUp } from "lucide-react";
 
 export default function ScrollToTop() {
-  const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const handler = () => setVisible(window.scrollY > 600);
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
@@ -32,10 +30,10 @@ export default function ScrollToTop() {
         alignItems: "center",
         justifyContent: "center",
         boxShadow: "0 4px 20px rgba(232,168,56,0.3)",
-        opacity: mounted && visible ? 1 : 0,
-        transform: mounted && visible ? "translateY(0)" : "translateY(8px)",
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(8px)",
         transition: "opacity 300ms ease, transform 300ms ease",
-        pointerEvents: mounted && visible ? "auto" : "none",
+        pointerEvents: visible ? "auto" : "none",
         zIndex: 50,
       }}
       onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.1)")}

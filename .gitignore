@@ -40,3 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .aider*
+
+# temporary data dumps
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!vercel.json
