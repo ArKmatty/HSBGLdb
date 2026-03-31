@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid } from 'recharts';
 import { ChevronLeft, Trophy, Activity, Swords, AlertCircle, Loader2, GitCompare } from 'lucide-react';
 import Link from 'next/link';
-import { getPlayerHistory } from '@/app/actions/player';
+import { getPlayerHistory, getPlayerLive } from '@/app/actions/player';
 import { detectLocaleClient, translations } from '@/lib/i18n';
 import ScrollToTop from '@/components/ScrollToTop';
 
@@ -72,7 +72,17 @@ export default function ComparePage() {
     const name = index === 0 ? decodeURIComponent(player1 as string) : decodeURIComponent(player2 as string);
     setPlayers(prev => prev.map((p, i) => i === index ? { ...p, loading: true, error: null } : p) as [PlayerData, PlayerData]);
     try {
-      const result = await getPlayerHistory(name);
+      let region: string | undefined;
+      try {
+        const liveResult = await getPlayerLive(name);
+        if (liveResult.success && liveResult.live) {
+          region = liveResult.live.region;
+        }
+      } catch {
+        // Fall back to unfiltered history
+      }
+
+      const result = await getPlayerHistory(name, region);
       if (result.success && result.history) {
         const formatted = result.history.map((h: { rating: number; created_at: string }) => ({
           mmr: h.rating,
@@ -268,7 +278,7 @@ export default function ComparePage() {
                   {players.map((p, idx) => (
                     <Area
                       key={p.name}
-                      type="monotone"
+                      type="monotoneX"
                       dataKey={p.name}
                       stroke={COLORS[idx]}
                       strokeWidth={2}
@@ -276,6 +286,8 @@ export default function ComparePage() {
                       fill={`${COLORS[idx]}15`}
                       isAnimationActive={false}
                       connectNulls={false}
+                      activeDot={{ r: 5, fill: COLORS[idx], stroke: 'var(--bg-surface)', strokeWidth: 2 }}
+                      dot={false}
                     />
                   ))}
                 </AreaChart>

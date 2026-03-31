@@ -5,18 +5,25 @@ import { getPlayerLiveStats } from '@/lib/blizzard';
 /**
  * Recupera solo lo storico da Supabase (molto veloce)
  */
-export async function getPlayerHistory(name: string) {
+export async function getPlayerHistory(name: string, region?: string) {
   const start = Date.now();
   try {
-    const { data: history, error: hError } = await supabase
+    let query = supabase
       .from('leaderboard_history')
       .select('rating, created_at, rank, region')
-      .eq('accountId', name)
-      .order('created_at', { ascending: true });
+      .eq('accountId', name);
+
+    if (region) {
+      query = query.eq('region', region);
+    }
+
+    query = query.order('created_at', { ascending: true });
+
+    const { data: history, error: hError } = await query;
 
     if (hError) throw hError;
 
-    console.log(`[Perf] History for ${name} fetched in ${Date.now() - start}ms`);
+    console.log(`[Perf] History for ${name}${region ? ` (${region})` : ''} fetched in ${Date.now() - start}ms`);
     return { success: true, history: history || [] };
   } catch (error) {
     console.error("History Action Error:", error);

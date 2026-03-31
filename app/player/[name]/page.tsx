@@ -128,9 +128,22 @@ export default function PlayerPage() {
       
       let lastRating = 0;
       let lastDate = "";
+      let playerRegion: string | undefined;
 
       try {
-        const hResult = await getPlayerHistory(decodedName);
+        const lResult = await getPlayerLive(decodedName, lastRating, lastDate);
+        if (lResult.success && lResult.live) {
+          setLiveData(lResult.live);
+          playerRegion = lResult.live.region;
+        }
+      } catch (err) {
+        console.error("Live fetch error:", err);
+      } finally {
+        setLoadingLive(false);
+      }
+
+      try {
+        const hResult = await getPlayerHistory(decodedName, playerRegion);
         if (hResult.success && hResult.history) {
           const history = hResult.history;
           const formatted = history.map((h: { rating: number; created_at: string }) => ({
@@ -169,17 +182,6 @@ export default function PlayerPage() {
         console.error("History fetch error:", err);
       } finally {
         setLoadingHistory(false);
-      }
-
-      try {
-        const lResult = await getPlayerLive(decodedName, lastRating, lastDate);
-        if (lResult.success && lResult.live) {
-          setLiveData(lResult.live);
-        }
-      } catch (err) {
-        console.error("Live fetch error:", err);
-      } finally {
-        setLoadingLive(false);
       }
 
       try {
@@ -584,23 +586,15 @@ export default function PlayerPage() {
                     labelFormatter={(label: unknown) => formatTooltipDate(label as number, localeStr)}
                   />
                   <Area
-                    type="monotone"
+                    type="monotoneX"
                     dataKey="mmr"
                     stroke="var(--accent)"
                     strokeWidth={2}
                     fillOpacity={1}
                     fill="url(#mmrGradient)"
                     isAnimationActive={false}
-                    dot={(props: { payload: { isLive?: boolean }; cx?: number; cy?: number }) => {
-                      if (props.payload.isLive && props.cx != null && props.cy != null) {
-                        return (
-                          <g key={`live-dot-${props.cx}`}>
-                            <circle cx={props.cx} cy={props.cy} r={5} fill="var(--accent)" stroke="var(--bg-surface)" strokeWidth={2} />
-                          </g>
-                        );
-                      }
-                      return null;
-                    }}
+                    activeDot={{ r: 5, fill: 'var(--accent)', stroke: 'var(--bg-surface)', strokeWidth: 2 }}
+                    dot={false}
                   />
                   <defs>
                     <linearGradient id="mmrGradient" x1="0" y1="0" x2="0" y2="1">

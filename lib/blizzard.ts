@@ -96,8 +96,9 @@ export async function getLeaderboard(region = 'EU', page = 1) {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: snapshots } = await supabase
       .from('leaderboard_history')
-      .select('accountId, rating, created_at')
+      .select('accountId, rating, created_at, region')
       .in('accountId', playerNames)
+      .eq('region', region)
       .gte('created_at', yesterday)
       .order('created_at', { ascending: true });
 
@@ -151,8 +152,9 @@ export async function getLeaderboard(region = 'EU', page = 1) {
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { data: snapshots } = await supabase
     .from('leaderboard_history')
-    .select('accountId, rating, created_at')
+    .select('accountId, rating, created_at, region')
     .in('accountId', playerNames)
+    .eq('region', region)
     .gte('created_at', yesterday)
     .order('created_at', { ascending: true });
 
