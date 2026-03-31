@@ -93,7 +93,7 @@ export default function SiteNav() {
                 flexShrink: 0,
               }}
             >
-              <Image src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={24} height={24} />
+              <Image src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={24} height={24} style={{ background: 'white', borderRadius: 4 }} />
               <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.02em' }}>HSBGLdb</span>
             </Link>
 
