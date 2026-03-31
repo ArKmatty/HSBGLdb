@@ -1,7 +1,7 @@
 "use client";
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Search, TrendingUp, Sun, Moon } from 'lucide-react';
+import { Search, TrendingUp, Sun, Moon, FileText } from 'lucide-react';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { searchPlayers } from '@/app/actions/player';
 import { EmptyState } from './EmptyState';
@@ -177,6 +177,34 @@ export default function SiteNav() {
               <Search size={14} />
               <span>Search</span>
             </button>
+
+            {/* Patch Notes link */}
+            <Link
+              href="/patch-notes"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 32,
+                height: 32,
+                borderRadius: 6,
+                border: '1px solid var(--border-dim)',
+                background: 'transparent',
+                color: 'var(--text-muted)',
+                transition: 'all 150ms',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'var(--border-mid)';
+                e.currentTarget.style.color = 'var(--text-primary)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--border-dim)';
+                e.currentTarget.style.color = 'var(--text-muted)';
+              }}
+              aria-label="Patch Notes"
+            >
+              <FileText size={14} />
+            </Link>
 
             {/* Theme toggle */}
             <button
