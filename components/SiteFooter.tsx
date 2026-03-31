@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 
 export default function SiteFooter() {
   return (
@@ -23,7 +22,7 @@ export default function SiteFooter() {
          }}
        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-             <Image src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={20} height={20} style={{ background: 'white', borderRadius: 4 }} />
+             <img src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={20} height={20} style={{ objectFit: 'contain', background: 'white', borderRadius: 4 }} />
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               Data from Blizzard Entertainment API. Not affiliated with or endorsed by Blizzard Entertainment.
             </span>
