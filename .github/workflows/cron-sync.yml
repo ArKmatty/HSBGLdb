@@ -22,3 +22,29 @@ jobs:
             echo "Sync failed with HTTP $HTTP_CODE"
             exit 1
           fi
+
+      - name: Report failure to GitHub Issues
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          TITLE="Sync failed at $(date -u '+%Y-%m-%d %H:%M UTC')"
+
+          # Check for recent open issue to avoid spam
+          EXISTING=$(gh issue list \
+            --label "cron-failure" \
+            --state open \
+            --limit 1 \
+            --json title \
+            --jq '.[0].title // empty')
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" \
+              --body "Sync failed again.\n\nRun: $RUN_URL"
+          else
+            gh issue create \
+              --title "$TITLE" \
+              --body "Leaderboard sync failed.\n\nRun: $RUN_URL" \
+              --label "cron-failure"
+          fi

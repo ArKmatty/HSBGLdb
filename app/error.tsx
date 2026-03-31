@@ -25,9 +25,31 @@ export default function Error({
       background: 'var(--bg-base)',
     }}>
       <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 1,
+        background: 'linear-gradient(90deg, transparent, var(--red), transparent)',
+      }} />
+      <div style={{
         maxWidth: 400,
         textAlign: 'center',
       }}>
+        <div style={{
+          width: 56,
+          height: 56,
+          borderRadius: 16,
+          background: 'rgba(248,113,113,0.1)',
+          border: '1px solid rgba(248,113,113,0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 20px',
+          fontSize: 24,
+        }}>
+          !
+        </div>
         <h2 style={{
           fontSize: 20,
           fontWeight: 800,
@@ -41,7 +63,7 @@ export default function Error({
           color: 'var(--text-muted)',
           marginBottom: 24,
         }}>
-          An unexpected error occurred. Please try again.
+          An unexpected error occurred. Please try again or go back to the leaderboard.
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
           <button
@@ -72,7 +94,7 @@ export default function Error({
               textDecoration: 'none',
             }}
           >
-            Go home
+            Back to leaderboard
           </Link>
         </div>
       </div>
