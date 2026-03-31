@@ -12,7 +12,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 npm run dev        # Start dev server (localhost:3000)
 npm run build      # Production build
 npm run start      # Start production server
-npm run lint       # Run ESLint
+npm run lint       # Run ESLint (eslint-config-next core-web-vitals + typescript)
 ```
 
 **No test framework** is currently set up. If adding tests, prefer Vitest and document the command here. To run a single test file with Vitest: `npx vitest path/to/test.test.ts`.
@@ -25,7 +25,45 @@ npm run lint       # Run ESLint
 - **Data layer**: Supabase (`lib/supabase.ts`) + Blizzard API (`lib/blizzard.ts`)
 - **Caching**: `unstable_cache` from `next/cache` with explicit revalidate times
 - **Path aliases**: `@/*` maps to project root (configured in `tsconfig.json`)
-- **Styling**: CSS design tokens in `app/globals.css` with inline styles in components
+- **Styling**: CSS design tokens in `app/globals.css` + Tailwind CSS v4 via PostCSS
+- **i18n**: `lib/i18n.ts` for internationalization
+- **Charts**: `recharts` for data visualization; `lucide-react` for icons
+- **Analytics**: `@vercel/analytics` for usage tracking
+
+## Project Structure
+
+```
+app/              # Next.js App Router
+  actions/        # Server actions ("use server")
+  admin/          # Admin pages
+  api/            # API routes
+  compare/        # Player comparison pages
+  player/         # Player detail pages
+  error.tsx       # Error boundary
+  global-error.tsx # Global error boundary
+  layout.tsx      # Root layout
+  loading.tsx     # Loading UI
+  page.tsx        # Home page
+  robots.ts       # robots.txt generator
+  sitemap.ts      # sitemap.xml generator
+components/       # React components
+  LeaderboardTable.tsx
+  TopMoversWidget.tsx
+  PlayerCompare.tsx
+  AchievementBadges.tsx
+  DataFreshness.tsx
+  RecentSearches.tsx
+  ScrollToTop.tsx
+  SocialLinksForm.tsx
+lib/              # Shared utilities
+  blizzard.ts     # Blizzard API client
+  supabase.ts     # Supabase client
+  stats.ts        # Statistics calculations
+  ingest.ts       # Data ingestion + rate limiting
+  i18n.ts         # Internationalization
+public/           # Static assets
+scripts/          # Dev-only scripts (excluded from lint)
+```
 
 ## Code Style
 
@@ -36,7 +74,7 @@ npm run lint       # Run ESLint
 - Default exports for components; named exports for utilities and server actions
 
 ### TypeScript
-- **Strict mode enabled** — no `any` unless unavoidable (e.g., Twitch API responses use `any`)
+- **Strict mode enabled**, target ES2017 — no `any` unless unavoidable (e.g., Twitch API responses)
 - Define interfaces for data shapes (e.g., `interface Player { rank: number; accountid: string; rating: number }`)
 - Use `Readonly<>` for component props when appropriate
 - Type async action return values consistently (e.g., `{ success: boolean; data?: T; error?: string }`)
@@ -76,21 +114,13 @@ npm run lint       # Run ESLint
 - `fetch` with `{ next: { revalidate: SECONDS } }` for external APIs
 - In-memory cooldown maps for rate-limited operations (see `lib/ingest.ts`)
 - Cache tags for targeted revalidation (e.g., `{ tags: ['movers'] }`)
-- Document cache durations in comments (e.g., `// Cache per 60 secondi`)
+- Document cache durations in comments
 
 ### Environment Variables
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — client-safe
 - `TWITCH_CLIENT_ID` / `TWITCH_CLIENT_SECRET` — server-only
 - Check for missing env vars and warn gracefully (see `lib/supabase.ts`)
 - Never log or expose secret values; use placeholder fallbacks in development
-
-### Project Structure
-```
-app/              # Next.js App Router (pages, layouts, actions, API routes)
-components/       # React components (client-side when needed)
-lib/              # Shared utilities (blizzard.ts, supabase.ts, stats.ts, ingest.ts)
-public/           # Static assets
-```
 
 ### Git
 - Do not commit `.env.local` or any secrets

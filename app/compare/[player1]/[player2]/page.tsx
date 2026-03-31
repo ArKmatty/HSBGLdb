@@ -108,9 +108,44 @@ export default function ComparePage() {
 
   const chartData = useMemo(() => {
     const cutoff = timeRange === 'all' ? 0 : now - RANGE_MS[timeRange];
-    const p1 = players[0].history.filter(h => h.timestamp >= cutoff);
-    const p2 = players[1].history.filter(h => h.timestamp >= cutoff);
+    const p1Raw = players[0].history.filter(h => h.timestamp >= cutoff);
+    const p2Raw = players[1].history.filter(h => h.timestamp >= cutoff);
 
+    // Aggregate each player into time buckets to reduce noise
+    const BUCKET_MS: Record<TimeRange, number> = {
+      '24h': 2 * 60 * 60 * 1000,
+      '7d': 6 * 60 * 60 * 1000,
+      '30d': 24 * 60 * 60 * 1000,
+      'all': 72 * 60 * 60 * 1000,
+    };
+    const bucketSize = BUCKET_MS[timeRange];
+
+    function bucketize(data: HistoryPoint[]): HistoryPoint[] {
+      const result: HistoryPoint[] = [];
+      let bucketStart: number | null = null;
+      let bucketPoints: HistoryPoint[] = [];
+      for (const point of data) {
+        if (bucketStart === null) {
+          bucketStart = point.timestamp;
+          bucketPoints = [point];
+        } else if (point.timestamp - bucketStart < bucketSize) {
+          bucketPoints.push(point);
+        } else {
+          result.push(bucketPoints[bucketPoints.length - 1]);
+          bucketStart = point.timestamp;
+          bucketPoints = [point];
+        }
+      }
+      if (bucketPoints.length > 0) {
+        result.push(bucketPoints[bucketPoints.length - 1]);
+      }
+      return result;
+    }
+
+    const p1 = bucketize(p1Raw);
+    const p2 = bucketize(p2Raw);
+
+    // Merge all unique timestamps from both bucketed players
     const allTimestamps = new Set([...p1.map(h => h.timestamp), ...p2.map(h => h.timestamp)]);
     const sorted = Array.from(allTimestamps).sort((a, b) => a - b);
 
@@ -261,7 +296,7 @@ export default function ComparePage() {
                     tickFormatter={(ts: number) => new Date(ts).toLocaleDateString(locale === 'it' ? 'it-IT' : 'en-US', { month: 'short', day: 'numeric' })}
                   />
                   <YAxis
-                    domain={['dataMin - 50', 'dataMax + 50']}
+                    domain={['dataMin - 150', 'dataMax + 150']}
                     stroke="var(--text-muted)"
                     fontSize={10}
                     tickLine={false}
@@ -283,10 +318,10 @@ export default function ComparePage() {
                   {players.map((p, idx) => (
                     <Area
                       key={p.name}
-                      type="linear"
+                      type="monotone"
                       dataKey={p.name}
                       stroke={COLORS[idx]}
-                      strokeWidth={1.5}
+                      strokeWidth={2}
                       fillOpacity={1}
                       fill={`${COLORS[idx]}15`}
                       isAnimationActive={false}

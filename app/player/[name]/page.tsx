@@ -92,15 +92,49 @@ export default function PlayerPage() {
   const chartData = useMemo(() => {
     const cutoff = timeRange === 'all' ? 0 : Date.now() - RANGE_MS[timeRange];
     const filtered = historyData.filter(h => h.timestamp >= cutoff);
-    if (liveData && (filtered.length === 0 || filtered[filtered.length - 1].mmr !== liveData.rating)) {
-      filtered.push({
+
+    // Aggregate into time buckets to reduce noise from tiny MMR fluctuations
+    const BUCKET_MS: Record<TimeRange, number> = {
+      '24h': 2 * 60 * 60 * 1000,   // 2-hour buckets
+      '7d': 6 * 60 * 60 * 1000,    // 6-hour buckets
+      '30d': 24 * 60 * 60 * 1000,  // 1-day buckets
+      'all': 72 * 60 * 60 * 1000,  // 3-day buckets
+    };
+    const bucketSize = BUCKET_MS[timeRange];
+
+    const aggregated: HistoryPoint[] = [];
+    let bucketStart: number | null = null;
+    let bucketPoints: HistoryPoint[] = [];
+
+    for (const point of filtered) {
+      if (bucketStart === null) {
+        bucketStart = point.timestamp;
+        bucketPoints = [point];
+      } else if (point.timestamp - bucketStart < bucketSize) {
+        bucketPoints.push(point);
+      } else {
+        // Emit bucket: use the last (most recent) point in the bucket
+        const last = bucketPoints[bucketPoints.length - 1];
+        aggregated.push(last);
+        bucketStart = point.timestamp;
+        bucketPoints = [point];
+      }
+    }
+    // Emit final bucket
+    if (bucketPoints.length > 0) {
+      aggregated.push(bucketPoints[bucketPoints.length - 1]);
+    }
+
+    if (liveData && (aggregated.length === 0 || aggregated[aggregated.length - 1].mmr !== liveData.rating)) {
+      aggregated.push({
         mmr: liveData.rating,
         date: 'LIVE',
         timestamp: Date.now(),
         isLive: true,
       });
     }
-    return filtered;
+
+    return aggregated;
   }, [historyData, liveData, timeRange]);
 
   const xAxisTicks = useMemo(() => {
@@ -562,7 +596,7 @@ export default function PlayerPage() {
                     tickFormatter={(ts: number) => formatXAxisDate(ts, timeRange, localeStr)}
                   />
                   <YAxis
-                    domain={['dataMin - 50', 'dataMax + 50']}
+                    domain={['dataMin - 150', 'dataMax + 150']}
                     stroke="var(--text-muted)"
                     fontSize={10}
                     tickLine={false}
@@ -586,10 +620,10 @@ export default function PlayerPage() {
                     labelFormatter={(label: unknown) => formatTooltipDate(label as number, localeStr)}
                   />
                   <Area
-                    type="linear"
+                    type="monotone"
                     dataKey="mmr"
                     stroke="var(--accent)"
-                    strokeWidth={1.5}
+                    strokeWidth={2}
                     fillOpacity={1}
                     fill="url(#mmrGradient)"
                     isAnimationActive={false}
