@@ -16,16 +16,14 @@ export default function RefreshButton() {
         method: 'POST',
       });
       
-      if (res.ok) {
-        const result = await res.json();
-        if (result.success) {
-          setMessage(`Found ${result.count || 0} patch notes`);
-          setTimeout(() => window.location.reload(), 1500);
-        } else {
-          setMessage(result.error || 'Refresh failed');
-        }
+      const result = await res.json();
+      console.log('Refresh response:', res.status, result);
+      
+      if (res.ok && result.success) {
+        setMessage(`Found ${result.count || 0} patch notes`);
+        setTimeout(() => window.location.reload(), 1500);
       } else {
-        setMessage('Refresh failed - not configured');
+        setMessage(result.error || `Error: ${res.status}`);
       }
     } catch (err) {
       console.error('Refresh failed:', err);
