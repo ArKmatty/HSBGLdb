@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp, TrendingDown, Minus, Tv, ChevronUp, ChevronDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Tv, ChevronUp, ChevronDown, Crown } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
 import { translations } from "@/lib/i18n";
 
@@ -165,21 +165,38 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
                     style={{
                       borderTop: idx === 0 ? 'none' : '1px solid var(--border-dim)',
                       background: isTop3 ? 'rgba(232,168,56,0.02)' : 'transparent',
-                      transition: 'background 150ms',
+                      transition: 'background 150ms, transform 150ms',
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-elevated)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = isTop3 ? 'rgba(232,168,56,0.02)' : 'transparent')}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'var(--bg-elevated)';
+                      e.currentTarget.style.transform = 'scale(1.005)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = isTop3 ? 'rgba(232,168,56,0.02)' : 'transparent';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
                   >
                     {/* Rank */}
                     <td style={{ padding: '12px 16px', width: 60 }}>
-                      <span style={{
-                        fontSize: 13,
-                        fontWeight: 800,
-                        fontVariantNumeric: 'tabular-nums',
-                        color: rankColor || 'var(--text-muted)',
-                      }}>
-                        #{player.rank}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {player.rank <= 3 && (
+                          <Crown 
+                            size={14} 
+                            style={{ 
+                              color: rankColor,
+                              flexShrink: 0,
+                            }} 
+                          />
+                        )}
+                        <span style={{
+                          fontSize: 13,
+                          fontWeight: 800,
+                          fontVariantNumeric: 'tabular-nums',
+                          color: rankColor || 'var(--text-muted)',
+                        }}>
+                          #{player.rank}
+                        </span>
+                      </div>
                     </td>
 
                     {/* Player */}
@@ -211,14 +228,16 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
                               display: 'inline-flex', alignItems: 'center', gap: 4,
                               padding: '6px 10px',
                               borderRadius: 6,
-                              background: 'rgba(167,139,250,0.1)',
-                              border: '1px solid rgba(167,139,250,0.2)',
+                              background: 'rgba(167,139,250,0.15)',
+                              border: '1px solid rgba(167,139,250,0.3)',
                               fontSize: 10,
                               fontWeight: 700,
                               color: 'var(--purple)',
                               letterSpacing: '0.05em',
                               textTransform: 'uppercase',
                               flexShrink: 0,
+                              boxShadow: '0 0 12px rgba(167,139,250,0.2)',
+                              animation: 'pulse 2s infinite',
                             }}
                           >
                             <Tv size={10} />
