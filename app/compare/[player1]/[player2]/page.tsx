@@ -318,7 +318,7 @@ export default function ComparePage() {
                   {players.map((p, idx) => (
                     <Area
                       key={p.name}
-                      type="monotone"
+                      type="linear"
                       dataKey={p.name}
                       stroke={COLORS[idx]}
                       strokeWidth={2}

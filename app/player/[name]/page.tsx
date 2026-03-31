@@ -619,7 +619,7 @@ export default function PlayerPage() {
                     labelFormatter={(label: unknown) => formatTooltipDate(label as number, localeStr)}
                   />
                   <Area
-                    type="monotone"
+                    type="linear"
                     dataKey="mmr"
                     stroke="var(--accent)"
                     strokeWidth={2}
