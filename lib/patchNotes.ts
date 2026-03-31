@@ -113,9 +113,15 @@ export async function refreshPatchNotes(): Promise<{ success: boolean; count?: n
       const summary = summaryMatch?.[1]?.trim() || '';
 
       const bgChanges = extractBattlegroundsSection(html);
+      console.log('[PatchNotes] Extracted BG changes length:', bgChanges.length);
       const cleanBgChanges = cleanHtml(bgChanges);
+      console.log('[PatchNotes] Cleaned BG changes length:', cleanBgChanges.length);
+      console.log('[PatchNotes] First 200 chars:', cleanBgChanges.substring(0, 200));
 
-      if (!cleanBgChanges) continue;
+      if (!cleanBgChanges) {
+        console.log('[PatchNotes] Skipping - no BG changes found');
+        continue;
+      }
 
       const id = url.split('/').pop() || title.toLowerCase().replace(/\s+/g, '-');
 
