@@ -91,10 +91,16 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
             fontWeight: 500,
             fontFamily: 'inherit',
             outline: 'none',
-            transition: 'border-color 150ms',
+            transition: 'border-color 150ms, box-shadow 150ms',
           }}
-          onFocus={e => (e.target.style.borderColor = 'var(--accent)')}
-          onBlur={e => (e.target.style.borderColor = 'var(--border-mid)')}
+          onFocus={e => {
+            e.target.style.borderColor = 'var(--accent)';
+            e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)';
+          }}
+          onBlur={e => {
+            e.target.style.borderColor = 'var(--border-mid)';
+            e.target.style.boxShadow = 'none';
+          }}
         />
       </div>
 

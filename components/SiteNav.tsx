@@ -111,6 +111,17 @@ export default function SiteNav() {
                     transition: 'all 150ms',
                     background: isHome && currentRegion === r ? 'var(--bg-elevated)' : 'transparent',
                     color: isHome && currentRegion === r ? 'var(--text-primary)' : 'var(--text-muted)',
+                    boxShadow: isHome && currentRegion === r ? '0 1px 3px rgba(0,0,0,0.2)' : 'none',
+                  }}
+                  onMouseEnter={e => {
+                    if (!(isHome && currentRegion === r)) {
+                      e.currentTarget.style.color = 'var(--text-primary)';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!(isHome && currentRegion === r)) {
+                      e.currentTarget.style.color = 'var(--text-muted)';
+                    }
                   }}
                 >
                   {r}
@@ -207,6 +218,15 @@ export default function SiteNav() {
                 background: 'var(--bg-elevated)',
                 borderRadius: 8,
                 border: '1px solid var(--border-mid)',
+                transition: 'border-color 200ms, box-shadow 200ms',
+              }}
+              onFocus={e => {
+                e.currentTarget.style.borderColor = 'var(--accent)';
+                e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-glow)';
+              }}
+              onBlur={e => {
+                e.currentTarget.style.borderColor = 'var(--border-mid)';
+                e.currentTarget.style.boxShadow = 'none';
               }}
             >
               <Search size={16} color="var(--text-muted)" />

@@ -98,7 +98,7 @@ export default async function Home({ searchParams }: Props) {
       {/* ── Content ── */}
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 20px 64px' }}>
         {/* Page title */}
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 20 }} className="animate-fade-in">
           <h1 style={{
             fontSize: 'clamp(22px, 4vw, 32px)',
             fontWeight: 800,
@@ -119,7 +119,7 @@ export default async function Home({ searchParams }: Props) {
         <LeaderboardTable players={players} twitchStatuses={twitchStatuses} locale={locale} />
 
         {/* Pagination */}
-        <nav aria-label="Pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 28 }}>
+        <nav aria-label="Pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 28 }} className="animate-fade-in">
           {currentPage > 1 && (
             <Link
               href={`/?region=${region}&page=${currentPage - 1}`}
@@ -131,7 +131,17 @@ export default async function Home({ searchParams }: Props) {
                 background: 'var(--bg-surface)',
                 border: '1px solid var(--border-dim)',
                 color: 'var(--text-secondary)',
-                transition: 'border-color 150ms, color 150ms',
+                transition: 'border-color 150ms, color 150ms, transform 150ms',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'var(--border-mid)';
+                e.currentTarget.style.color = 'var(--text-primary)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--border-dim)';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+                e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
               {t.previous}
@@ -151,7 +161,17 @@ export default async function Home({ searchParams }: Props) {
                 background: 'var(--bg-surface)',
                 border: '1px solid var(--border-dim)',
                 color: 'var(--text-secondary)',
-                transition: 'border-color 150ms, color 150ms',
+                transition: 'border-color 150ms, color 150ms, transform 150ms',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'var(--border-mid)';
+                e.currentTarget.style.color = 'var(--text-primary)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--border-dim)';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+                e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
               {t.next}
