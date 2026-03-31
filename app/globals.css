@@ -122,3 +122,11 @@ a { text-decoration: none; color: inherit; }
 .footer-link:hover {
   color: var(--accent);
 }
+
+/* ── Pagination buttons ── */
+.pagination-btn:hover {
+  border-color: var(--border-mid) !important;
+  color: var(--text-primary) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}

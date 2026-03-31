@@ -131,18 +131,9 @@ export default async function Home({ searchParams }: Props) {
                 background: 'var(--bg-surface)',
                 border: '1px solid var(--border-dim)',
                 color: 'var(--text-secondary)',
-                transition: 'border-color 150ms, color 150ms, transform 150ms',
+                transition: 'border-color 150ms, color 150ms, transform 150ms, box-shadow 150ms',
               }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'var(--border-mid)';
-                e.currentTarget.style.color = 'var(--text-primary)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'var(--border-dim)';
-                e.currentTarget.style.color = 'var(--text-secondary)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
+              className="pagination-btn"
             >
               {t.previous}
             </Link>
@@ -161,18 +152,9 @@ export default async function Home({ searchParams }: Props) {
                 background: 'var(--bg-surface)',
                 border: '1px solid var(--border-dim)',
                 color: 'var(--text-secondary)',
-                transition: 'border-color 150ms, color 150ms, transform 150ms',
+                transition: 'border-color 150ms, color 150ms, transform 150ms, box-shadow 150ms',
               }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'var(--border-mid)';
-                e.currentTarget.style.color = 'var(--text-primary)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'var(--border-dim)';
-                e.currentTarget.style.color = 'var(--text-secondary)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
+              className="pagination-btn"
             >
               {t.next}
             </Link>
