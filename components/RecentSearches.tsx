@@ -1,5 +1,5 @@
 "use client";
-import { useSyncExternalStore, useCallback, useRef } from 'react';
+import { useSyncExternalStore, useCallback } from 'react';
 import Link from 'next/link';
 import { Clock, X } from 'lucide-react';
 import type { Locale } from '@/lib/i18n';
@@ -39,16 +39,14 @@ function subscribe(onStoreChange: () => void) {
 
 export default function RecentSearches({ locale }: { locale: Locale }) {
   const recent = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY_ARRAY);
-  const recentRef = useRef(recent);
-  recentRef.current = recent;
   const t = translations[locale];
 
   const remove = useCallback((name: string) => {
-    const updated = recentRef.current.filter(n => n !== name);
+    const updated = recent.filter(n => n !== name);
     localStorage.setItem('recentSearches', JSON.stringify(updated));
     cachedRecent = updated;
     window.dispatchEvent(new StorageEvent('storage', { key: 'recentSearches' }));
-  }, []);
+  }, [recent]);
 
   if (recent.length === 0) return null;
 

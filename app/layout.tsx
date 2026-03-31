@@ -10,11 +10,11 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "Hearthstone Battlegrounds Leaderboard",
+    default: "Hearthstone Battlegrounds Leaderboard — Live MMR Rankings",
     template: "%s | HS BG Leaderboard",
   },
-  description: "Track top Hearthstone Battlegrounds players across EU, US, and AP regions. Live MMR rankings, player stats, and Twitch stream status.",
-  keywords: ["Hearthstone", "Battlegrounds", "Leaderboard", "MMR", "Ranking", "Blizzard"],
+  description: "Track top Hearthstone Battlegrounds players across EU, US, and AP regions. Live MMR rankings, player stats, historical trends, and Twitch stream status.",
+  keywords: ["Hearthstone", "Battlegrounds", "Leaderboard", "MMR", "Ranking", "Blizzard", "BG", "Top Players", "Live Stats"],
   authors: [{ name: "HS BG Leaderboard" }],
   openGraph: {
     title: "Hearthstone Battlegrounds Leaderboard",
@@ -31,6 +31,13 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
 };
 
@@ -39,8 +46,30 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Hearthstone Battlegrounds Leaderboard',
+    description: 'Live MMR rankings and player stats for Hearthstone Battlegrounds',
+    url: process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com'}/player/{search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  };
+
   return (
     <html lang="en" className={`${inter.className} h-full antialiased`}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         {children}
         <Analytics />

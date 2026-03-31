@@ -25,6 +25,36 @@ export async function getPlayerHistory(name: string) {
 }
 
 /**
+ * Search players by partial name match.
+ * Returns distinct accountIds that contain the query string (case-insensitive).
+ */
+export async function searchPlayers(query: string) {
+  if (!query || query.length < 2) return [];
+  try {
+    const { data, error } = await supabase
+      .from('leaderboard_history')
+      .select('accountId')
+      .ilike('accountId', `%${query}%`)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) return [];
+
+    const seen = new Set<string>();
+    return data
+      .map(d => d.accountId)
+      .filter(name => {
+        if (seen.has(name)) return false;
+        seen.add(name);
+        return true;
+      })
+      .slice(0, 10);
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Recupera lo stato live (più lento, orchestrando caching Blizzard)
  * e gestisce l'auto-snapshot.
  */

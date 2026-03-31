@@ -9,6 +9,8 @@ import { getTwitchStatusForPlayer } from '@/app/actions/twitch';
 import { detectLocaleClient, translations } from '@/lib/i18n';
 import ScrollToTop from '@/components/ScrollToTop';
 import SocialLinksForm from '@/components/SocialLinksForm';
+import PlayerCompare from '@/components/PlayerCompare';
+import AchievementBadges from '@/components/AchievementBadges';
 
 type TimeRange = '24h' | '7d' | '30d' | 'all';
 
@@ -418,6 +420,8 @@ export default function PlayerPage() {
                 )}
                 <span style={{ color: 'var(--border-dim)' }}>·</span>
                 <SocialLinksForm playerName={decodedName} />
+                <span style={{ color: 'var(--border-dim)' }}>·</span>
+                <PlayerCompare currentName={decodedName} />
               </div>
             </div>
           </div>
@@ -492,6 +496,16 @@ export default function PlayerPage() {
             </div>
           ))}
         </div>
+
+        {/* Achievement badges */}
+        {!loadingHistory && stats.peak > 0 && (
+          <AchievementBadges
+            peakMmr={stats.peak}
+            currentRank={liveData?.rank ?? 0}
+            gamesPlayed={stats.games}
+            gain7d={stats.gain7d}
+          />
+        )}
 
         {/* Chart */}
         <div style={{

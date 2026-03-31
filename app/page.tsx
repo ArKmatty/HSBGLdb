@@ -1,3 +1,4 @@
+import type { Metadata, ResolvingMetadata } from 'next';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { getLeaderboard } from '../lib/blizzard';
@@ -6,10 +7,60 @@ import LeaderboardTable from '../components/LeaderboardTable';
 import TopMoversWidget from '../components/TopMoversWidget';
 import RecentSearches from '../components/RecentSearches';
 import ScrollToTop from '../components/ScrollToTop';
+import DataFreshness from '../components/DataFreshness';
 import { getTwitchStatusesForLeaderboard } from './actions/twitch';
 import { detectLocale, translations } from '@/lib/i18n';
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ region?: string, page?: string }> }) {
+type Props = {
+  searchParams: Promise<{ region?: string; page?: string }>;
+};
+
+export async function generateMetadata(
+  { searchParams }: Props,
+  parent: ResolvingMetadata,
+): Promise<Metadata> {
+  const params = await searchParams;
+  const region = (params.region || 'EU').toUpperCase();
+  const page = parseInt(params.page || '1');
+  const pageLabel = page > 1 ? ` — Page ${page}` : '';
+
+  const regionNames: Record<string, string> = {
+    EU: 'Europe',
+    US: 'Americas',
+    AP: 'Asia-Pacific',
+  };
+  const regionLabel = regionNames[region] || region;
+
+  const title = `${regionLabel} Hearthstone Battlegrounds Leaderboard${pageLabel}`;
+  const description = `Live MMR rankings for top Hearthstone Battlegrounds players in ${regionLabel}. Track ratings, trends, and Twitch streams for the best BG players.`;
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com';
+  const url = `${baseUrl}/?region=${region}${page > 1 ? `&page=${page}` : ''}`;
+
+  const previous = await parent;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      ...previous.openGraph,
+      title,
+      description,
+      url,
+      type: 'website',
+    },
+    twitter: {
+      ...previous.twitter,
+      title,
+      description,
+    },
+    alternates: {
+      canonical: url,
+    },
+  };
+}
+
+export default async function Home({ searchParams }: Props) {
   const params = await searchParams;
   const region = (params.region || 'EU').toUpperCase();
   const currentPage = parseInt(params.page || '1');
@@ -23,6 +74,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
   const playerIds = players.map(p => p.accountid);
   const twitchStatuses = await getTwitchStatusesForLeaderboard(playerIds);
+  const now = new Date().getTime();
 
   const regions = ['EU', 'US', 'AP'];
 
@@ -113,6 +165,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           </div>
         </div>
       </header>
+
+      {/* ── Freshness indicator ── */}
+      <div style={{
+        background: 'var(--bg-surface)',
+        borderBottom: '1px solid var(--border-dim)',
+      }}>
+        <div style={{ maxWidth: 880, margin: '0 auto', padding: '8px 20px' }}>
+          <DataFreshness lastUpdated={now} />
+        </div>
+      </div>
 
       {/* ── Content ── */}
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 20px 64px' }}>
