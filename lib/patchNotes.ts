@@ -66,7 +66,12 @@ export async function fetchPatchNotes(limit = 10): Promise<PatchNote[]> {
 }
 
 export async function refreshPatchNotes(): Promise<{ success: boolean; count?: number; error?: string }> {
+  console.log('[PatchNotes] Starting refresh...');
+  console.log('[PatchNotes] Supabase URL:', supabaseUrl ? 'set' : 'NOT SET');
+  console.log('[PatchNotes] Supabase Key:', supabaseKey ? 'set' : 'NOT SET');
+  
   if (!supabase) {
+    console.log('[PatchNotes] Supabase client not initialized');
     return { success: false, error: 'Database not configured' };
   }
 
