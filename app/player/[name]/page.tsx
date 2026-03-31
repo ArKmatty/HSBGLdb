@@ -627,7 +627,6 @@ export default function PlayerPage() {
                     fillOpacity={1}
                     fill="url(#mmrGradient)"
                     isAnimationActive={false}
-                    activeDot={{ r: 4, fill: 'var(--accent)', stroke: 'var(--bg-surface)', strokeWidth: 2 }}
                     dot={false}
                   />
                   <defs>

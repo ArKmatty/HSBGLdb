@@ -326,7 +326,6 @@ export default function ComparePage() {
                       fill={`${COLORS[idx]}15`}
                       isAnimationActive={false}
                       connectNulls={false}
-                      activeDot={{ r: 4, fill: COLORS[idx], stroke: 'var(--bg-surface)', strokeWidth: 2 }}
                       dot={false}
                     />
                   ))}
