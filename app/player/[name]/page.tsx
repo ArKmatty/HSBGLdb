@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { ChevronLeft, TrendingUp, Trophy, Activity, Swords, Globe, AlertCircle, Loader2, Award, Tv } from 'lucide-react';
 import Link from 'next/link';
@@ -78,6 +78,7 @@ const RANGE_MS: Record<TimeRange, number> = {
 
 export default function PlayerPage() {
   const { name } = useParams();
+  const router = useRouter();
   const decodedName = decodeURIComponent(name as string);
   const [locale] = useState(() => detectLocaleClient());
   const t = translations[locale];
@@ -89,6 +90,16 @@ export default function PlayerPage() {
   const [loadingLive, setLoadingLive] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('7d');
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        router.push('/');
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [router]);
 
   const chartData = useMemo(() => {
     const cutoff = timeRange === 'all' ? 0 : Date.now() - RANGE_MS[timeRange];

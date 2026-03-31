@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid } from 'recharts';
 import { ChevronLeft, Trophy, Activity, Swords, AlertCircle, Loader2, GitCompare } from 'lucide-react';
 import Link from 'next/link';
@@ -60,6 +60,7 @@ function computeStats(history: HistoryPoint[]) {
 
 export default function ComparePage() {
   const { player1, player2 } = useParams();
+  const router = useRouter();
   const [locale] = useState(() => detectLocaleClient());
   const t = translations[locale];
   const [timeRange, setTimeRange] = useState<TimeRange>('7d');
@@ -68,6 +69,16 @@ export default function ComparePage() {
     { name: decodeURIComponent(player1 as string), history: [], stats: { peak: 0, games: 0, gain7d: 0 }, loading: true, error: null },
     { name: decodeURIComponent(player2 as string), history: [], stats: { peak: 0, games: 0, gain7d: 0 }, loading: true, error: null },
   ]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        router.push('/');
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [router]);
 
   const fetchPlayer = useCallback(async (index: 0 | 1) => {
     const name = index === 0 ? decodeURIComponent(player1 as string) : decodeURIComponent(player2 as string);
