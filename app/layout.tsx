@@ -75,13 +75,14 @@ export default async function RootLayout({
 
    return (
      <html lang={locale === 'it' ? 'it' : 'en'} className={`${inter.className} h-full antialiased`}>
-       <head>
-         <link rel="icon" href="/logo.png" />
-         <script
-           type="application/ld+json"
-           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-         />
-       </head>
+        <head>
+          <link rel="icon" href="/logo.png" />
+          <meta name="google-site-verification" content="UVgbouKh4yyEjxMXG3eCkmR_9K07WoUHPGDHVzWJpQs" />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          />
+        </head>
       <body className="min-h-full flex flex-col">
         <SiteNav />
         {children}
