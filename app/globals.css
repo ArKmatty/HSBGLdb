@@ -132,10 +132,6 @@ a { text-decoration: none; color: inherit; }
 }
 
 /* ── Leaderboard rows ── */
-.leaderboard-row {
-  transition: background 150ms, transform 150ms;
-}
 .leaderboard-row:hover {
   background: var(--bg-elevated) !important;
-  transform: scale(1.005);
 }
