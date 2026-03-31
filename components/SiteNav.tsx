@@ -1,7 +1,7 @@
 "use client";
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Search, TrendingUp } from 'lucide-react';
+import { Search, TrendingUp, Sun, Moon } from 'lucide-react';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { searchPlayers } from '@/app/actions/player';
 
@@ -17,6 +17,7 @@ export default function SiteNav() {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [searching, setSearching] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -33,10 +34,26 @@ export default function SiteNav() {
         setQuery('');
         setSuggestions([]);
       }
+      if (e.key === '/' && !searchOpen && document.activeElement?.tagName !== 'INPUT') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('theme') as 'dark' | 'light' | null;
+    if (saved) setTheme(saved);
   }, []);
+
+  const toggleTheme = useCallback(() => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  }, [theme]);
 
   const handleSearch = useCallback(async (q: string) => {
     if (q.length < 2) {
@@ -158,6 +175,35 @@ export default function SiteNav() {
             >
               <Search size={14} />
               <span>Search</span>
+            </button>
+
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 32,
+                height: 32,
+                borderRadius: 6,
+                border: '1px solid var(--border-dim)',
+                background: 'transparent',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                transition: 'all 150ms',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'var(--border-mid)';
+                e.currentTarget.style.color = 'var(--text-primary)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--border-dim)';
+                e.currentTarget.style.color = 'var(--text-muted)';
+              }}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
             </button>
           </div>
         </div>
