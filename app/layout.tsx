@@ -12,6 +12,10 @@ const inter = Inter({
   display: "swap",
 });
 
+function getBaseUrl() {
+  return process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
+}
+
 export const metadata: Metadata = {
   title: {
     default: "Hearthstone Battlegrounds Leaderboard — Live MMR Rankings",
@@ -58,12 +62,12 @@ export default async function RootLayout({
     '@type': 'WebSite',
     name: 'Hearthstone Battlegrounds Leaderboard',
     description: 'Live MMR rankings and player stats for Hearthstone Battlegrounds',
-    url: process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com',
+    url: getBaseUrl() || 'https://your-domain.com',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com'}/player/{search_term_string}`,
+        urlTemplate: `${getBaseUrl() || 'https://your-domain.com'}/player/{search_term_string}`,
       },
       'query-input': 'required name=search_term_string',
     },

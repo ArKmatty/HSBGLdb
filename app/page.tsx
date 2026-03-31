@@ -15,6 +15,10 @@ type Props = {
   searchParams: Promise<{ region?: string; page?: string }>;
 };
 
+function getBaseUrl() {
+  return process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
+}
+
 export async function generateMetadata(
   { searchParams }: Props,
   parent: ResolvingMetadata,
@@ -35,7 +39,7 @@ export async function generateMetadata(
   const title = `${regionLabel} Hearthstone Battlegrounds Leaderboard${pageLabel}`;
   const description = `Live MMR rankings for top Hearthstone Battlegrounds players in ${regionLabel}. Track ratings, trends, and Twitch streams for the best BG players.`;
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com';
+  const baseUrl = getBaseUrl();
   const url = `${baseUrl}/?region=${region}${page > 1 ? `&page=${page}` : ''}`;
 
   const previous = await parent;

@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 
 export default async function sitemap() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://your-domain.com');
   const regions = ['EU', 'US', 'AP', 'CN'];
 
   const regionUrls = regions.map(region => ({

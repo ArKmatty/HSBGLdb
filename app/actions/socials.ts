@@ -2,9 +2,13 @@
 
 import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET;
+
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
 
 interface SocialSubmission {
   playerName: string;
@@ -140,9 +144,27 @@ export async function loginAdmin(password: string) {
     return { success: false, error: "Admin secret not configured." };
   }
 
-  if (password !== ADMIN_SECRET) {
-    return { success: false, error: "Wrong password." };
+  const headersList = await headers();
+  const ip = headersList.get('x-forwarded-for') || headersList.get('x-real-ip') || 'unknown';
+  const now = Date.now();
+  const attempt = loginAttempts.get(ip);
+
+  if (attempt && attempt.lockedUntil > now) {
+    const remaining = Math.ceil((attempt.lockedUntil - now) / 1000 / 60);
+    return { success: false, error: `Too many attempts. Try again in ${remaining}m.` };
   }
+
+  if (password !== ADMIN_SECRET) {
+    const newCount = (attempt?.count || 0) + 1;
+    if (newCount >= MAX_ATTEMPTS) {
+      loginAttempts.set(ip, { count: newCount, lockedUntil: now + LOCKOUT_MS });
+      return { success: false, error: `Too many attempts. Locked for 15 minutes.` };
+    }
+    loginAttempts.set(ip, { count: newCount, lockedUntil: attempt?.lockedUntil || 0 });
+    return { success: false, error: `Wrong password. ${MAX_ATTEMPTS - newCount} attempts remaining.` };
+  }
+
+  loginAttempts.delete(ip);
 
   const cookieStore = await cookies();
   cookieStore.set("admin_auth", ADMIN_SECRET, {

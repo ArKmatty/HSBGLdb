@@ -14,7 +14,7 @@ export async function generateMetadata(
   const title = `${name} — Hearthstone Battlegrounds Stats`;
   const description = `View MMR history, live ranking, and Twitch status for Hearthstone Battlegrounds player ${name}.`;
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://your-domain.com';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://your-domain.com');
   const url = `${baseUrl}/player/${encodeURIComponent(name)}`;
 
   return {

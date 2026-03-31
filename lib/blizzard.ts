@@ -6,7 +6,7 @@ const REVALIDATE_SECONDS = 60;
 const CACHE_LEADERBOARD_SECONDS = 60;
 const CACHE_PLAYER_LIVE_SECONDS = 120;
 const CN_API_BASE = 'https://webapi.blizzard.cn/hs-rank-api-server/api';
-const CN_SEASON_ID = 17;
+const CN_SEASON_ID = parseInt(process.env.CN_SEASON_ID || '17', 10);
 
 export interface BlizzardLeaderboardRow {
   rank: number;
