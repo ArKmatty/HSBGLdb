@@ -74,15 +74,28 @@ export async function refreshPatchNotes(): Promise<{ success: boolean; count?: n
 
   for (const url of PATCH_NOTES_URLS) {
     try {
+      console.log('[PatchNotes] Fetching:', url);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      
       const res = await fetch(url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; HSBG-Leaderboard/1.0)',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         },
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
-      if (!res.ok) continue;
+      if (!res.ok) {
+        console.log('[PatchNotes] Fetch failed with status:', res.status);
+        continue;
+      }
 
       const html = await res.text();
+      console.log('[PatchNotes] Got HTML, length:', html.length);
 
       const titleMatch = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
       const dateMatch = html.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
@@ -117,13 +130,16 @@ export async function refreshPatchNotes(): Promise<{ success: boolean; count?: n
       if (upsertError) {
         console.error('[PatchNotes] Upsert error:', upsertError);
       } else {
+        console.log('[PatchNotes] Saved patch:', title);
         newCount++;
       }
-    } catch (err) {
-      console.error('[PatchNotes] Error fetching:', url, err);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error('[PatchNotes] Error fetching:', url, errorMessage);
     }
   }
 
+  console.log('[PatchNotes] Total saved:', newCount);
   return { success: true, count: newCount };
 }
 
