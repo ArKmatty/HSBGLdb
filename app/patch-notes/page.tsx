@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
-import { detectLocale } from '@/lib/i18n';
-import { headers } from 'next/headers';
 import { getPatchNotes } from '@/lib/patchNotes';
 import PatchNotesList from './PatchNotesList';
+import RefreshButton from './RefreshButton';
 
 export const metadata: Metadata = {
   title: 'Battlegrounds Patch Notes',
@@ -41,6 +40,7 @@ export default async function PatchNotesPage() {
                 Leaderboard
               </span>
             </div>
+            <RefreshButton />
           </div>
 
           <div style={{ marginBottom: 20 }}>
