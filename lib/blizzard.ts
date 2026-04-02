@@ -111,17 +111,49 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
   console.log(`[Blizzard] Fetching ${region} page ${page}...`);
 
   if (region === 'CN') {
-    const currentPlayers = await getCnLeaderboard(page);
+    // CN: Fetch from database (populated by cron sync) instead of live API
+    // This is more reliable as CN API often fails from Vercel
+    const startRank = ((page - 1) * 10) + 1;
+    const endRank = page * 10;
+    
+    const { data: dbPlayers, error: dbError } = await supabaseAdmin
+      .from('leaderboard_history')
+      .select('accountId, rating, rank, region, created_at')
+      .eq('region', region)
+      .gte('rank', startRank)
+      .lte('rank', endRank)
+      .order('rank', { ascending: true });
+    
+    if (dbError) {
+      console.error(`[Blizzard CN] Database error:`, dbError.message);
+      return [];
+    }
+    
+    // Deduplicate by accountId (keep latest)
+    const latestMap = new Map<string, { row: BlizzardLeaderboardRow; createdAt: Date }>();
+    for (const p of dbPlayers || []) {
+      const existing = latestMap.get(p.accountId);
+      const pDate = new Date(p.created_at);
+      if (!existing || pDate > existing.createdAt) {
+        latestMap.set(p.accountId, {
+          row: {
+            rank: p.rank,
+            accountid: p.accountId,
+            rating: p.rating,
+          },
+          createdAt: pDate,
+        });
+      }
+    }
+    
+    const currentPlayers = Array.from(latestMap.values()).map(v => v.row);
+    console.log(`[Blizzard CN] Fetched ${currentPlayers.length} players from database (ranks ${startRank}-${endRank})`);
+    
     if (currentPlayers.length === 0) return [];
-
-    void ingestLeaderboardSnapshot(region, currentPlayers);
-
-    // Wait briefly for ingest to complete before querying snapshots
-    await new Promise(resolve => setTimeout(resolve, 500));
 
     const playerNames = currentPlayers.map(p => p.accountid);
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    
+
     // Retry snapshot query up to 3 times on failure
     let snapshots: any[] = [];
     let snapError: any = null;
