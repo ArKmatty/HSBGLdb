@@ -122,7 +122,7 @@ export default function SiteNav() {
               {REGIONS.map(r => (
                 <Link
                   key={r}
-                  href={`/?region=${r}`}
+                  href={`/?region=${r}&page=1`}
                   style={{
                     padding: '6px 12px',
                     borderRadius: 4,
