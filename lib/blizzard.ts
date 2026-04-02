@@ -92,6 +92,7 @@ export const getLeaderboard = unstable_cache(
 
     // Fetch from single region
     const players = await fetchRegionLeaderboard(region, page);
+    console.log(`[Blizzard] Cached leaderboard for ${region} page ${page}: ${players.length} players`);
     return players;
   },
   ['leaderboard-cache'],
@@ -127,12 +128,16 @@ export const getMultiRegionLeaderboard = unstable_cache(
 async function fetchRegionLeaderboard(region: string, page: number): Promise<BlizzardLeaderboardRow[]> {
   const VALID_REGIONS = ['EU', 'US', 'AP', 'CN'] as const;
   if (!VALID_REGIONS.includes(region as typeof VALID_REGIONS[number])) {
+    console.error(`[Blizzard] Invalid region: ${region}`);
     return [];
   }
 
   if (!Number.isInteger(page) || page < 1) {
+    console.error(`[Blizzard] Invalid page: ${page}`);
     return [];
   }
+
+  console.log(`[Blizzard] Fetching ${region} page ${page}...`);
 
   if (region === 'CN') {
     const currentPlayers = await getCnLeaderboard(page);
@@ -222,6 +227,10 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
       lastRating,
     };
   });
+
+  const minRank = Math.min(...playersWithTrend.map(p => p.rank));
+  const maxRank = Math.max(...playersWithTrend.map(p => p.rank));
+  console.log(`[Blizzard] ${region} page ${page}: ${playersWithTrend.length} players (ranks ${minRank}-${maxRank})`);
 
   return playersWithTrend;
 }
