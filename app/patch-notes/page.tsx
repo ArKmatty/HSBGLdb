@@ -3,10 +3,32 @@ import { getPatchNotes } from '@/lib/patchNotes';
 import PatchNotesList from './PatchNotesList';
 import RefreshButton from './RefreshButton';
 
-export const metadata: Metadata = {
-  title: 'Battlegrounds Patch Notes',
-  description: 'Latest Battlegrounds patch notes and updates from Hearthstone.',
-};
+function getBaseUrl() {
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://hsbg-ldb.vercel.app';
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const baseUrl = getBaseUrl();
+  const patchNotes = await getPatchNotes(1);
+  const latestPatch = patchNotes[0];
+
+  return {
+    title: 'Battlegrounds Patch Notes — HSBGLdb',
+    description: latestPatch?.summary || 'Latest Hearthstone Battlegrounds patch notes, balance changes, and meta updates. Stay current with the newest BG changes.',
+    openGraph: {
+      title: 'Battlegrounds Patch Notes',
+      description: 'Latest Hearthstone Battlegrounds patch notes and balance changes',
+      url: `${baseUrl}/patch-notes`,
+      type: 'article',
+      siteName: 'HSBGLdb',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'Battlegrounds Patch Notes',
+      description: 'Latest Hearthstone Battlegrounds patch notes and balance changes',
+    },
+  };
+}
 
 export const revalidate = 3600;
 

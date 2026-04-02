@@ -1,8 +1,10 @@
 import { supabaseAdmin } from '@/lib/supabase';
 
 export default async function sitemap() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://your-domain.com');
+  // Use explicit production URL — update this to your actual domain
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://hsbg-ldb.vercel.app';
   const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+  
   const regions = ['EU', 'US', 'AP', 'CN'];
 
   const regionUrls = regions.map(region => ({
@@ -12,13 +14,30 @@ export default async function sitemap() {
     priority: 0.9,
   }));
 
+  // Static pages that always exist
+  const staticPages = [
+    {
+      url: cleanBaseUrl,
+      lastModified: new Date(),
+      changeFrequency: 'hourly' as const,
+      priority: 1,
+    },
+    {
+      url: `${cleanBaseUrl}/patch-notes`,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.8,
+    },
+  ];
+
+  // Limit player URLs to top 100 to prevent timeout
   let playerUrls: Array<{ url: string; lastModified: Date; changeFrequency: string; priority: number }> = [];
   try {
     const { data: topPlayers } = await supabaseAdmin
       .from('leaderboard_history')
       .select('accountId, region, created_at')
       .order('created_at', { ascending: false })
-      .limit(200);
+      .limit(100);
 
     if (topPlayers?.length) {
       const seen = new Set<string>();
@@ -36,17 +55,13 @@ export default async function sitemap() {
           priority: 0.7,
         }));
     }
-  } catch {
+  } catch (error) {
+    console.error('[Sitemap] Error fetching players:', error);
     // Graceful degradation — sitemap still works without player URLs
   }
 
   return [
-    {
-      url: cleanBaseUrl,
-      lastModified: new Date(),
-      changeFrequency: 'hourly' as const,
-      priority: 1,
-    },
+    ...staticPages,
     ...regionUrls,
     ...playerUrls,
   ];

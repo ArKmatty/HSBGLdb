@@ -51,29 +51,29 @@ export async function generateMetadata(
 
   const title = `${regionLabel} Hearthstone Battlegrounds Leaderboard${pageLabel}`;
   const description = isMultiRegion
-    ? `Live MMR rankings for top Hearthstone Battlegrounds players across all regions. Track ratings and compare EU, US, AP, and CN players.`
+    ? `Live MMR rankings for top Hearthstone Battlegrounds players across all regions. Track ratings, trends, and Twitch streams for EU, US, AP, and CN players.`
     : `Live MMR rankings for top Hearthstone Battlegrounds players in ${regionLabel}. Track ratings, trends, and Twitch streams for the best BG players.`;
 
   const baseUrl = getBaseUrl();
-  const regionQuery = Array.isArray(params.region) 
-    ? params.region.join(',') 
+  const regionQuery = Array.isArray(params.region)
+    ? params.region.join(',')
     : params.region || 'EU';
-  const url = `${baseUrl}/?region=${regionQuery}${page > 1 ? `&page=${page}` : ''}`;
 
-  const previous = await parent;
+  const url = `${baseUrl}/?region=${regionQuery}${page > 1 ? `&page=${page}` : ''}`;
 
   return {
     title,
     description,
     openGraph: {
-      ...previous.openGraph,
       title,
       description,
       url,
       type: 'website',
+      siteName: 'HSBGLdb',
+      locale: 'en_US',
     },
     twitter: {
-      ...previous.twitter,
+      card: 'summary_large_image',
       title,
       description,
     },
