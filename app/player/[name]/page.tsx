@@ -142,7 +142,8 @@ export default function PlayerPage() {
 
       // Step 1: Fetch live data first to determine the correct region
       // This prevents region collision when the same username exists in multiple regions (e.g., US + CN)
-      const lResult = await getPlayerLive(decodedName, lastRating, lastDate).catch((err) => {
+      // Pass urlRegion to prioritize the region from the URL
+      const lResult = await getPlayerLive(decodedName, lastRating, lastDate, urlRegion).catch((err) => {
         console.error("Live fetch error:", err);
         return { success: false, live: null };
       });

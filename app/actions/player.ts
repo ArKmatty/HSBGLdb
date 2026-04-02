@@ -73,12 +73,13 @@ export async function searchPlayers(query: string) {
  * @param name - The player's account ID (battle tag)
  * @param lastHistoryRating - Optional last known rating for snapshot comparison
  * @param lastHistoryDate - Optional last snapshot date for cooldown check
+ * @param region - Optional preferred region to search first (prevents region collision)
  * @returns Object with success status and live player data, or error message
  */
-export async function getPlayerLive(name: string, lastHistoryRating?: number, lastHistoryDate?: string) {
+export async function getPlayerLive(name: string, lastHistoryRating?: number, lastHistoryDate?: string, region?: string | null) {
   const start = Date.now();
   try {
-    const live = await getPlayerLiveStats(name);
+    const live = await getPlayerLiveStats(name, region);
     console.log(`[Perf] Live scan for ${name} fetched/cached in ${Date.now() - start}ms`);
 
     // Auto-Snapshot Logic

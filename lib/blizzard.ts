@@ -207,24 +207,26 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
 }
 
 export const getPlayerLiveStats = unstable_cache(
-  async (name: string): Promise<BlizzardPlayerLive | null> => {
+  async (name: string, preferredRegion?: string | null): Promise<BlizzardPlayerLive | null> => {
     const regions = ['EU', 'US', 'AP', 'CN'];
     const PREFERRED_PAGES = 10;
     const OTHER_PAGES = 5;
 
-    let preferredRegion: string | null = null;
-    try {
-      const { data: history } = await supabaseAdmin
-        .from('leaderboard_history')
-        .select('region')
-        .eq('accountId', name)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (history?.[0]?.region) {
-        preferredRegion = history[0].region;
+    // If no preferred region provided, try to get from recent history
+    if (!preferredRegion) {
+      try {
+        const { data: history } = await supabaseAdmin
+          .from('leaderboard_history')
+          .select('region')
+          .eq('accountId', name)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (history?.[0]?.region) {
+          preferredRegion = history[0].region;
+        }
+      } catch {
+        // Ignore — fall back to default order
       }
-    } catch {
-      // Ignore — fall back to default order
     }
 
     const orderedRegions = preferredRegion
