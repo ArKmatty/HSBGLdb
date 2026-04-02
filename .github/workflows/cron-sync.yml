@@ -10,6 +10,9 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Trigger leaderboard sync
         run: |
           RESPONSE=$(curl -s -L -w "\n%{http_code}" \
