@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { getPatchNotes } from '@/lib/patchNotes';
 import Link from 'next/link';
 
@@ -79,10 +80,12 @@ export default async function PatchNotePage({ params }: PatchNotePageProps) {
         <article style={{ background: 'var(--bg-surface)', borderRadius: 16, border: '1px solid var(--border-dim)', overflow: 'hidden' }}>
           {patch.image_url ? (
             <div style={{ position: 'relative', height: 280, overflow: 'hidden' }}>
-              <img 
-                src={patch.image_url} 
+              <Image
+                src={patch.image_url}
                 alt={patch.title}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                fill
+                style={{ objectFit: 'cover' }}
+                sizes="(max-width: 800px) 100vw, 800px"
               />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, var(--bg-surface) 0%, transparent 50%)' }} />
             </div>

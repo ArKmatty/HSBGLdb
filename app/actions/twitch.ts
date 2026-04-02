@@ -1,13 +1,15 @@
 "use server";
 import { unstable_cache } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase';
+import type { TwitchTokenResponse, TwitchStreamsResponse, TwitchLiveStatus } from '@/lib/types';
 
 const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
 
 /**
- * Ottiene un App Access Token da Twitch.
- * Cachato per 1 ora per evitare token scaduti o revocati.
+ * Retrieves a Twitch App Access Token for API authentication.
+ * Cached for 1 hour to prevent rate limiting and token revocation.
+ * @returns Access token string or null if credentials missing
  */
 const getTwitchAccessToken = unstable_cache(
   async () => {
@@ -29,7 +31,7 @@ const getTwitchAccessToken = unstable_cache(
           cache: 'no-store',
         }
       );
-      const data = await response.json();
+      const data = await response.json() as TwitchTokenResponse;
       return data.access_token;
     } catch (e) {
       console.error("Error fetching Twitch Token:", e);
@@ -41,11 +43,13 @@ const getTwitchAccessToken = unstable_cache(
 );
 
 /**
- * Controlla se uno o più username sono live.
+ * Checks if one or more Twitch usernames are currently streaming.
+ * @param usernames - Array of Twitch usernames to check
+ * @returns Record of username to live status data
  */
 export async function getTwitchLiveStatus(usernames: string[]) {
   if (!usernames || usernames.length === 0) return {};
-  
+
   const token = await getTwitchAccessToken();
   if (!token || !CLIENT_ID) return {};
 
@@ -59,10 +63,10 @@ export async function getTwitchLiveStatus(usernames: string[]) {
       next: { revalidate: 60 } // Cache per 60 secondi
     });
 
-    const data = await response.json();
-    const liveMap: Record<string, { isLive: boolean; title: string; viewerCount: number; startedAt: string; thumbnailUrl: string }> = {};
-    
-    data.data?.forEach((stream: { user_login: string; title: string; viewer_count: number; started_at: string; thumbnail_url: string }) => {
+    const data = await response.json() as TwitchStreamsResponse;
+    const liveMap: Record<string, TwitchLiveStatus> = {};
+
+    data.data?.forEach((stream) => {
         liveMap[stream.user_login.toLowerCase()] = {
             isLive: true,
             title: stream.title,
@@ -80,8 +84,10 @@ export async function getTwitchLiveStatus(usernames: string[]) {
 }
 
 /**
- * [SERVER SIDE] Recupera i dati Twitch per un singolo giocatore.
- * Combina la query del DB e dell'API di Twitch.
+ * Retrieves Twitch live status for a single player by their account ID.
+ * Looks up the player's Twitch username from the database and checks if they're live.
+ * @param accountId - The player's account ID (battle tag)
+ * @returns Twitch status object with username and live data, or null if not found
  */
 export async function getTwitchStatusForPlayer(accountId: string) {
     try {
@@ -107,7 +113,9 @@ export async function getTwitchStatusForPlayer(accountId: string) {
 }
 
 /**
- * Recupera tutte le mappature social dalla cache.
+ * Retrieves all player social mappings from the database.
+ * Cached for 5 minutes as this data changes infrequently.
+ * @returns Array of account IDs with their Twitch usernames
  */
 const getAllSocials = unstable_cache(
   async () => {
@@ -121,7 +129,10 @@ const getAllSocials = unstable_cache(
 );
 
 /**
- * [SERVER SIDE] Recupera massivamente gli stati Twitch per la classifica.
+ * Retrieves Twitch live statuses for multiple players in the leaderboard.
+ * Efficiently batches API calls for all players with linked Twitch accounts.
+ * @param accountIds - Array of player account IDs to check
+ * @returns Record of account IDs to Twitch live status data
  */
 export async function getTwitchStatusesForLeaderboard(accountIds: string[]) {
     try {

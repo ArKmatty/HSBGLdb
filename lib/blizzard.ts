@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './supabase';
 import { ingestLeaderboardSnapshot } from './ingest';
 import { unstable_cache } from 'next/cache';
+import type { BlizzardLeaderboardRow, BlizzardLeaderboardData, BlizzardPlayerLive, CnLeaderboardResponse } from './types';
 
 const REVALIDATE_SECONDS = 60;
 const CACHE_LEADERBOARD_SECONDS = 60;
@@ -8,37 +9,7 @@ const CACHE_PLAYER_LIVE_SECONDS = 120;
 const CN_API_BASE = 'https://webapi.blizzard.cn/hs-rank-api-server/api';
 const CN_SEASON_ID = parseInt(process.env.CN_SEASON_ID || '17', 10);
 
-export interface BlizzardLeaderboardRow {
-  rank: number;
-  accountid: string;
-  rating: number;
-  lastRating?: number;
-}
-
-export interface BlizzardLeaderboardPage {
-  leaderboard?: {
-    rows?: BlizzardLeaderboardRow[];
-  };
-}
-
-export interface BlizzardPlayerLive extends BlizzardLeaderboardRow {
-  region: string;
-}
-
-interface CnLeaderboardResponse {
-  code: number;
-  message: string;
-  data: {
-    list: Array<{
-      position: number;
-      battle_tag: string;
-      score: number;
-    }>;
-    total: number;
-  };
-}
-
-function isValidLeaderboardPage(data: unknown): data is BlizzardLeaderboardPage {
+function isValidLeaderboardPage(data: unknown): data is BlizzardLeaderboardData {
   return typeof data === 'object' && data !== null;
 }
 
@@ -278,7 +249,7 @@ export const getPlayerLiveStats = unstable_cache(
         const pagesResults = await Promise.all(pageRequests);
         const rows = pagesResults.flatMap(d => d.leaderboard?.rows || []);
         const match = rows.find(
-          (r: { accountid: string }) => r.accountid.toLowerCase() === name.toLowerCase()
+          (r: BlizzardLeaderboardRow) => r.accountid.toLowerCase() === name.toLowerCase()
         );
 
         if (match) {

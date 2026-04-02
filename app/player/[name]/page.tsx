@@ -13,6 +13,7 @@ import SocialLinksForm from '@/components/SocialLinksForm';
 import PlayerCompare from '@/components/PlayerCompare';
 import AchievementBadges from '@/components/AchievementBadges';
 import WatchlistButton from '@/components/WatchlistButton';
+import CopyButton from '@/components/CopyButton';
 import { ChartSkeleton } from '@/components/Skeleton';
 
 type TimeRange = '24h' | '7d' | '30d' | 'all';
@@ -366,6 +367,7 @@ export default function PlayerPage() {
                 }}>
                   {decodedName}
                 </h1>
+                <CopyButton text={decodedName} label="Name" />
                 {liveData ? (
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: 5,

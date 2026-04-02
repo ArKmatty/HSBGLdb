@@ -53,6 +53,12 @@ interface SocialSubmission {
   url?: string;
 }
 
+/**
+ * Submits a social link for a player (public form submission).
+ * Creates a pending submission record for admin review.
+ * @param data - Social link submission data with player name, platform, username, and URL
+ * @returns Object with success status or error message
+ */
 export async function submitSocialLink(data: SocialSubmission) {
   try {
     const validated = socialSubmissionSchema.safeParse(data);
@@ -91,6 +97,11 @@ export async function submitSocialLink(data: SocialSubmission) {
   }
 }
 
+/**
+ * Retrieves all pending social link submissions (admin only).
+ * Requires admin authentication.
+ * @returns Object with success status and array of pending submissions
+ */
 export async function getPendingSubmissions() {
   if (!await isAdminAuthenticated()) {
     return { success: false, error: "Unauthorized." };
@@ -115,6 +126,12 @@ export async function getPendingSubmissions() {
   }
 }
 
+/**
+ * Approves a social link submission and updates the player's socials (admin only).
+ * Marks the submission as approved and adds the link to player_socials.
+ * @param id - The submission ID to approve
+ * @returns Object with success status or error message
+ */
 export async function approveSubmission(id: string) {
   if (!await isAdminAuthenticated()) {
     return { success: false, error: "Unauthorized." };
@@ -159,6 +176,12 @@ export async function approveSubmission(id: string) {
   }
 }
 
+/**
+ * Rejects a social link submission (admin only).
+ * Marks the submission as rejected without updating player_socials.
+ * @param id - The submission ID to reject
+ * @returns Object with success status or error message
+ */
 export async function rejectSubmission(id: string) {
   if (!await isAdminAuthenticated()) {
     return { success: false, error: "Unauthorized." };
@@ -183,6 +206,12 @@ export async function rejectSubmission(id: string) {
   }
 }
 
+/**
+ * Authenticates an admin user with a password.
+ * Implements rate limiting (5 attempts, 15min lockout) and sets a session cookie.
+ * @param password - The admin password
+ * @returns Object with success status or error message
+ */
 export async function loginAdmin(password: string) {
   if (!ADMIN_SECRET) {
     return { success: false, error: "Admin secret not configured." };
@@ -223,6 +252,10 @@ export async function loginAdmin(password: string) {
   return { success: true };
 }
 
+/**
+ * Logs out an admin user by clearing the session cookie.
+ * @returns Object with success status
+ */
 export async function logoutAdmin() {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);

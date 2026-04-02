@@ -3,7 +3,11 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getPlayerLiveStats } from '@/lib/blizzard';
 
 /**
- * Recupera solo lo storico da Supabase (molto veloce)
+ * Retrieves player rating history from Supabase.
+ * @param name - The player's account ID (battle tag)
+ * @param region - Optional region filter (EU, US, AP, CN)
+ * @param limit - Maximum number of records to return (default: 100)
+ * @returns Object with success status and history array, or error message
  */
 export async function getPlayerHistory(name: string, region?: string, limit = 100) {
   const start = Date.now();
@@ -34,6 +38,8 @@ export async function getPlayerHistory(name: string, region?: string, limit = 10
 /**
  * Search players by partial name match.
  * Returns distinct accountIds that contain the query string (case-insensitive).
+ * @param query - The search query (minimum 2 characters)
+ * @returns Array of matching account IDs (max 10 results)
  */
 export async function searchPlayers(query: string) {
   if (!query || query.length < 2) return [];
@@ -62,8 +68,12 @@ export async function searchPlayers(query: string) {
 }
 
 /**
- * Recupera lo stato live (più lento, orchestrando caching Blizzard)
- * e gestisce l'auto-snapshot.
+ * Retrieves live player stats from Blizzard API with auto-snapshot functionality.
+ * Saves a snapshot to history if rating changed and cooldown period passed.
+ * @param name - The player's account ID (battle tag)
+ * @param lastHistoryRating - Optional last known rating for snapshot comparison
+ * @param lastHistoryDate - Optional last snapshot date for cooldown check
+ * @returns Object with success status and live player data, or error message
  */
 export async function getPlayerLive(name: string, lastHistoryRating?: number, lastHistoryDate?: string) {
   const start = Date.now();

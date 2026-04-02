@@ -2,6 +2,18 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.blizzard.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.blizzard.cn',
+      },
+    ],
+  },
   async headers() {
     return [
       {
