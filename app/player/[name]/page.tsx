@@ -12,6 +12,7 @@ import ScrollToTop from '@/components/ScrollToTop';
 import SocialLinksForm from '@/components/SocialLinksForm';
 import PlayerCompare from '@/components/PlayerCompare';
 import AchievementBadges from '@/components/AchievementBadges';
+import WatchlistButton from '@/components/WatchlistButton';
 import { ChartSkeleton } from '@/components/Skeleton';
 
 type TimeRange = '24h' | '7d' | '30d' | 'all';
@@ -420,6 +421,8 @@ export default function PlayerPage() {
                     </a>
                   </>
                 )}
+                <span style={{ color: 'var(--border-dim)' }}>·</span>
+                <WatchlistButton playerName={decodedName} />
                 <span style={{ color: 'var(--border-dim)' }}>·</span>
                 <SocialLinksForm playerName={decodedName} />
                 <span style={{ color: 'var(--border-dim)' }}>·</span>

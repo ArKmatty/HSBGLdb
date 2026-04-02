@@ -8,6 +8,7 @@ import TopMoversWidget from '../components/TopMoversWidget';
 import RecentSearches from '../components/RecentSearches';
 import ScrollToTop from '../components/ScrollToTop';
 import DataFreshness from '../components/DataFreshness';
+import WatchlistWidget from '../components/WatchlistWidget';
 import { getTwitchStatusesForLeaderboard } from './actions/twitch';
 import { detectLocale, translations } from '@/lib/i18n';
 
@@ -115,6 +116,7 @@ export default async function Home({ searchParams }: Props) {
         </div>
 
         <RecentSearches locale={locale} />
+        <WatchlistWidget locale={locale} region={region} />
         <TopMoversWidget players={topMovers} fallers={topFallers} locale={locale} region={region} />
         <LeaderboardTable players={players} twitchStatuses={twitchStatuses} locale={locale} region={region} />
 

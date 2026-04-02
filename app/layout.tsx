@@ -7,6 +7,7 @@ import { detectLocale } from "@/lib/i18n";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
 import SkipLink from "@/components/SkipLink";
+import { WatchlistProvider } from "@/lib/watchlist";
 import "./globals.css";
 
 const inter = Inter({
@@ -111,11 +112,13 @@ export default async function RootLayout({
         </head>
       <body className="min-h-full flex flex-col">
         <SkipLink />
-        <SiteNav />
-        <main id="main-content" style={{ flex: 1 }}>
-        {children}
-        </main>
-        <SiteFooter />
+        <WatchlistProvider>
+          <SiteNav />
+          <main id="main-content" style={{ flex: 1 }}>
+          {children}
+          </main>
+          <SiteFooter />
+        </WatchlistProvider>
         <Analytics />
         <SpeedInsights />
       </body>

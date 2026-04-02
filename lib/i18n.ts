@@ -51,6 +51,7 @@ export const translations = {
     rating: 'Rating',
     databaseError: 'Database error',
     liveDataUnavailable: 'Live data unavailable',
+    watchlist: 'Watchlist',
   },
   it: {
     subtitle: 'Top 100 per regione · aggiornamento live',
@@ -84,6 +85,7 @@ export const translations = {
     rating: 'Rating',
     databaseError: 'Errore database',
     liveDataUnavailable: 'Dati live non disponibili',
+    watchlist: 'Watchlist',
   },
 };
 
