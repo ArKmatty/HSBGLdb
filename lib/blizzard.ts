@@ -161,12 +161,27 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
       }
     }
 
+    // Debug: check if any snapshots have wrong region
+    const wrongRegionSnapshots = snapshots?.filter(s => s.region !== region);
+    if (wrongRegionSnapshots && wrongRegionSnapshots.length > 0) {
+      console.error(`[Blizzard CN] WARNING: Found ${wrongRegionSnapshots.length} snapshots with wrong region!`);
+      console.error(`[Blizzard CN] Wrong region samples:`, wrongRegionSnapshots.slice(0, 5));
+    }
+
     const snapshotMap = new Map<string, number>();
     for (const s of snapshots || []) {
       const key = s.accountId.toLowerCase();
       if (!snapshotMap.has(key)) {
         snapshotMap.set(key, s.rating);
       }
+    }
+
+    // Debug: log jeef's trend calculation
+    const jeefPlayer = currentPlayers.find(p => p.accountid.toLowerCase() === 'jeef');
+    if (jeefPlayer) {
+      const jeefSnapshotRating = snapshotMap.get('jeef');
+      const trend = jeefSnapshotRating ? jeefPlayer.rating - jeefSnapshotRating : 0;
+      console.log(`[Blizzard CN] jeef: current=${jeefPlayer.rating}, snapshot=${jeefSnapshotRating}, trend=${trend}`);
     }
 
     return currentPlayers.map(player => {
