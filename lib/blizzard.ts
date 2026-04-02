@@ -90,64 +90,52 @@ export const getLeaderboard = unstable_cache(
       return [];
     }
 
-    if (region === 'CN') {
-      const currentPlayers = await getCnLeaderboard(page);
-      if (currentPlayers.length === 0) return [];
+    // Fetch from single region
+    const players = await fetchRegionLeaderboard(region, page);
+    return players;
+  },
+  ['leaderboard-cache'],
+  { revalidate: CACHE_LEADERBOARD_SECONDS, tags: ['leaderboard'] }
+);
 
-      void ingestLeaderboardSnapshot(region, currentPlayers);
-
-      const playerNames = currentPlayers.map(p => p.accountid);
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: snapshots } = await supabaseAdmin
-        .from('leaderboard_history')
-        .select('accountId, rating, created_at, region')
-        .in('accountId', playerNames)
-        .eq('region', region)
-        .gte('created_at', yesterday)
-        .order('created_at', { ascending: true });
-
-      const snapshotMap = new Map<string, number>();
-      for (const s of snapshots || []) {
-        const key = s.accountId.toLowerCase();
-        if (!snapshotMap.has(key)) {
-          snapshotMap.set(key, s.rating);
-        }
-      }
-
-      return currentPlayers.map(player => {
-        const oldestRating = snapshotMap.get(player.accountid.toLowerCase());
-        const lastRating = oldestRating !== undefined ? oldestRating : player.rating;
-        return { ...player, lastRating };
-      });
+/**
+ * Fetch leaderboard from multiple regions combined
+ */
+export const getMultiRegionLeaderboard = unstable_cache(
+  async (regions: string[], page = 1) => {
+    if (!Array.isArray(regions) || regions.length === 0) {
+      return [];
     }
 
-    const pageSize = 10;
-    const startPage = ((page - 1) * pageSize) + 1;
+    const allPlayers = await Promise.all(
+      regions.map(region => fetchRegionLeaderboard(region, page))
+    );
 
-    const requests = Array.from({ length: pageSize }, (_, i) => {
-      const apiPage = startPage + i;
-      return fetch(
-        `https://hearthstone.blizzard.com/en-us/api/community/leaderboardsData?region=${region}&leaderboardId=battlegrounds&page=${apiPage}`,
-        { next: { revalidate: REVALIDATE_SECONDS } }
-      )
-        .then(res => {
-          if (!res.ok) {
-            console.error(`[Blizzard] API error: ${res.status} for page ${apiPage}`);
-            return { leaderboard: { rows: [] } };
-          }
-          return res.json();
-        })
-        .catch(err => {
-          console.error(`[Blizzard] Fetch error for page ${apiPage}:`, err);
-          return { leaderboard: { rows: [] } };
-        });
-    });
+    // Flatten and combine results
+    const combined = allPlayers.flat();
 
-    const results = await Promise.all(requests);
-    const currentPlayers = results
-      .filter(isValidLeaderboardPage)
-      .flatMap(data => data.leaderboard?.rows || []);
+    // Re-sort by rank across regions
+    return combined.sort((a, b) => a.rank - b.rank);
+  },
+  ['multiregion-leaderboard-cache'],
+  { revalidate: CACHE_LEADERBOARD_SECONDS, tags: ['leaderboard', 'multiregion'] }
+);
 
+/**
+ * Fetch leaderboard from a single region
+ */
+async function fetchRegionLeaderboard(region: string, page: number): Promise<BlizzardLeaderboardRow[]> {
+  const VALID_REGIONS = ['EU', 'US', 'AP', 'CN'] as const;
+  if (!VALID_REGIONS.includes(region as typeof VALID_REGIONS[number])) {
+    return [];
+  }
+
+  if (!Number.isInteger(page) || page < 1) {
+    return [];
+  }
+
+  if (region === 'CN') {
+    const currentPlayers = await getCnLeaderboard(page);
     if (currentPlayers.length === 0) return [];
 
     void ingestLeaderboardSnapshot(region, currentPlayers);
@@ -170,20 +158,73 @@ export const getLeaderboard = unstable_cache(
       }
     }
 
-    const playersWithTrend = currentPlayers.map(player => {
+    return currentPlayers.map(player => {
       const oldestRating = snapshotMap.get(player.accountid.toLowerCase());
       const lastRating = oldestRating !== undefined ? oldestRating : player.rating;
-      return {
-        ...player,
-        lastRating,
-      };
+      return { ...player, lastRating };
     });
+  }
 
-    return playersWithTrend;
-  },
-  ['leaderboard'],
-  { revalidate: CACHE_LEADERBOARD_SECONDS, tags: ['leaderboard'] }
-);
+  const pageSize = 10;
+  const startPage = ((page - 1) * pageSize) + 1;
+
+  const requests = Array.from({ length: pageSize }, (_, i) => {
+    const apiPage = startPage + i;
+    return fetch(
+      `https://hearthstone.blizzard.com/en-us/api/community/leaderboardsData?region=${region}&leaderboardId=battlegrounds&page=${apiPage}`,
+      { next: { revalidate: REVALIDATE_SECONDS } }
+    )
+      .then(res => {
+        if (!res.ok) {
+          console.error(`[Blizzard] API error: ${res.status} for page ${apiPage}`);
+          return { leaderboard: { rows: [] } };
+        }
+        return res.json();
+      })
+      .catch(err => {
+        console.error(`[Blizzard] Fetch error for page ${apiPage}:`, err);
+        return { leaderboard: { rows: [] } };
+      });
+  });
+
+  const results = await Promise.all(requests);
+  const currentPlayers = results
+    .filter(isValidLeaderboardPage)
+    .flatMap(data => data.leaderboard?.rows || []);
+
+  if (currentPlayers.length === 0) return [];
+
+  void ingestLeaderboardSnapshot(region, currentPlayers);
+
+  const playerNames = currentPlayers.map(p => p.accountid);
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: snapshots } = await supabaseAdmin
+    .from('leaderboard_history')
+    .select('accountId, rating, created_at, region')
+    .in('accountId', playerNames)
+    .eq('region', region)
+    .gte('created_at', yesterday)
+    .order('created_at', { ascending: true });
+
+  const snapshotMap = new Map<string, number>();
+  for (const s of snapshots || []) {
+    const key = s.accountId.toLowerCase();
+    if (!snapshotMap.has(key)) {
+      snapshotMap.set(key, s.rating);
+    }
+  }
+
+  const playersWithTrend = currentPlayers.map(player => {
+    const oldestRating = snapshotMap.get(player.accountid.toLowerCase());
+    const lastRating = oldestRating !== undefined ? oldestRating : player.rating;
+    return {
+      ...player,
+      lastRating,
+    };
+  });
+
+  return playersWithTrend;
+}
 
 export const getPlayerLiveStats = unstable_cache(
   async (name: string): Promise<BlizzardPlayerLive | null> => {

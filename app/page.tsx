@@ -1,7 +1,7 @@
 import type { Metadata, ResolvingMetadata } from 'next';
 import Link from 'next/link';
 import { headers } from 'next/headers';
-import { getLeaderboard } from '../lib/blizzard';
+import { getLeaderboard, getMultiRegionLeaderboard } from '../lib/blizzard';
 import { getTopMovers, getTopFallers } from '../lib/stats';
 import LeaderboardTable from '../components/LeaderboardTable';
 import TopMoversWidget from '../components/TopMoversWidget';
@@ -13,7 +13,7 @@ import { getTwitchStatusesForLeaderboard } from './actions/twitch';
 import { detectLocale, translations } from '@/lib/i18n';
 
 type Props = {
-  searchParams: Promise<{ region?: string; page?: string }>;
+  searchParams: Promise<{ region?: string | string[]; page?: string }>;
 };
 
 function getBaseUrl() {
@@ -25,7 +25,15 @@ export async function generateMetadata(
   parent: ResolvingMetadata,
 ): Promise<Metadata> {
   const params = await searchParams;
-  const region = (params.region || 'EU').toUpperCase();
+  let regionParam = params.region || 'EU';
+  
+  const regions: string[] = Array.isArray(regionParam) 
+    ? regionParam.map(r => r.toUpperCase())
+    : [regionParam.toUpperCase()];
+  
+  const isMultiRegion = regions.length > 1 || (regions.length === 1 && regions[0] === 'ALL');
+  const displayRegion = isMultiRegion ? 'All Regions' : regions[0];
+  
   const page = parseInt(params.page || '1');
   const pageLabel = page > 1 ? ` — Page ${page}` : '';
 
@@ -34,14 +42,23 @@ export async function generateMetadata(
     US: 'Americas',
     AP: 'Asia-Pacific',
     CN: 'China',
+    ALL: 'All Regions',
   };
-  const regionLabel = regionNames[region] || region;
+  
+  const regionLabel = isMultiRegion 
+    ? 'All Regions' 
+    : regions.map(r => regionNames[r] || r).join(' + ');
 
   const title = `${regionLabel} Hearthstone Battlegrounds Leaderboard${pageLabel}`;
-  const description = `Live MMR rankings for top Hearthstone Battlegrounds players in ${regionLabel}. Track ratings, trends, and Twitch streams for the best BG players.`;
+  const description = isMultiRegion
+    ? `Live MMR rankings for top Hearthstone Battlegrounds players across all regions. Track ratings and compare EU, US, AP, and CN players.`
+    : `Live MMR rankings for top Hearthstone Battlegrounds players in ${regionLabel}. Track ratings, trends, and Twitch streams for the best BG players.`;
 
   const baseUrl = getBaseUrl();
-  const url = `${baseUrl}/?region=${region}${page > 1 ? `&page=${page}` : ''}`;
+  const regionQuery = Array.isArray(params.region) 
+    ? params.region.join(',') 
+    : params.region || 'EU';
+  const url = `${baseUrl}/?region=${regionQuery}${page > 1 ? `&page=${page}` : ''}`;
 
   const previous = await parent;
 
@@ -68,15 +85,25 @@ export async function generateMetadata(
 
 export default async function Home({ searchParams }: Props) {
   const params = await searchParams;
-  const region = (params.region || 'EU').toUpperCase();
+  let regionParam = params.region || 'EU';
+  
+  // Handle both single region (string) and multiple regions (array)
+  const regions: string[] = Array.isArray(regionParam) 
+    ? regionParam.map(r => r.toUpperCase())
+    : [regionParam.toUpperCase()];
+  
+  const isMultiRegion = regions.length > 1 || (regions.length === 1 && regions[0] === 'ALL');
+  const displayRegion = isMultiRegion ? 'All Regions' : regions[0];
   const currentPage = parseInt(params.page || '1');
   const locale = detectLocale(await headers());
   const t = translations[locale];
 
   const [players, topMovers, topFallers] = await Promise.all([
-    getLeaderboard(region, currentPage),
-    getTopMovers(region),
-    getTopFallers(region),
+    isMultiRegion 
+      ? getMultiRegionLeaderboard(regions.filter(r => r !== 'ALL'), currentPage)
+      : getLeaderboard(regions[0], currentPage),
+    getTopMovers(regions[0] === 'ALL' ? 'EU' : regions[0]),
+    getTopFallers(regions[0] === 'ALL' ? 'EU' : regions[0]),
   ]);
 
   const playerIds = players.map(p => p.accountid);
@@ -108,23 +135,23 @@ export default async function Home({ searchParams }: Props) {
             margin: '0 0 4px',
             lineHeight: 1.2,
           }}>
-            {region} Battlegrounds
+            {isMultiRegion ? 'All Regions' : displayRegion} Battlegrounds
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, fontWeight: 400 }}>
-            {t.subtitle}
+            {isMultiRegion ? 'Combined rankings across all regions' : t.subtitle}
           </p>
         </div>
 
         <RecentSearches locale={locale} />
-        <WatchlistWidget locale={locale} region={region} />
-        <TopMoversWidget players={topMovers} fallers={topFallers} locale={locale} region={region} />
-        <LeaderboardTable players={players} twitchStatuses={twitchStatuses} locale={locale} region={region} />
+        <WatchlistWidget locale={locale} region={regions[0]} />
+        <TopMoversWidget players={topMovers} fallers={topFallers} locale={locale} region={displayRegion} />
+        <LeaderboardTable players={players} twitchStatuses={twitchStatuses} locale={locale} region={displayRegion} />
 
         {/* Pagination */}
         <nav aria-label="Pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 28 }} className="animate-fade-in">
           {currentPage > 1 && (
             <Link
-              href={`/?region=${region}&page=${currentPage - 1}`}
+              href={`/?region=${regions.join(',')}&page=${currentPage - 1}`}
               style={{
                 padding: '12px 20px',
                 borderRadius: 8,
@@ -145,7 +172,7 @@ export default async function Home({ searchParams }: Props) {
           </span>
           {players.length >= 10 && (
             <Link
-              href={`/?region=${region}&page=${currentPage + 1}`}
+              href={`/?region=${regions.join(',')}&page=${currentPage + 1}`}
               style={{
                 padding: '12px 20px',
                 borderRadius: 8,
