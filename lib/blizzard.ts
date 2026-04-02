@@ -208,7 +208,7 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
 
 export const getPlayerLiveStats = unstable_cache(
   async (name: string): Promise<BlizzardPlayerLive | null> => {
-    const regions = ['EU', 'US', 'AP'];
+    const regions = ['EU', 'US', 'AP', 'CN'];
     const PREFERRED_PAGES = 10;
     const OTHER_PAGES = 5;
 
@@ -233,6 +233,39 @@ export const getPlayerLiveStats = unstable_cache(
 
     for (const region of orderedRegions) {
       try {
+        // CN uses a different API
+        if (region === 'CN') {
+          const cnPageSize = 10;
+          const cnPagesToScan = preferredRegion === 'CN' ? PREFERRED_PAGES : OTHER_PAGES;
+          
+          const cnRequests = Array.from({ length: cnPagesToScan }, (_, i) =>
+            fetch(
+              `${CN_API_BASE}/game/ranks?mode_name=battlegrounds&season_id=${CN_SEASON_ID}&page=${i + 1}&page_size=25`,
+              { next: { revalidate: REVALIDATE_SECONDS } }
+            )
+              .then(res => {
+                if (!res.ok) return { code: 0, message: '', data: { list: [], total: 0 } };
+                return res.json() as Promise<CnLeaderboardResponse>;
+              })
+              .catch(() => ({ code: 0, message: '', data: { list: [], total: 0 } }))
+          );
+
+          const cnResults = await Promise.all(cnRequests);
+          const allPlayers = cnResults.flatMap(r => r.data?.list || []);
+          const match = allPlayers.find(p => p.battle_tag.toLowerCase() === name.toLowerCase());
+
+          if (match) {
+            return {
+              rank: match.position,
+              accountid: match.battle_tag,
+              rating: match.score,
+              region: 'CN',
+            };
+          }
+          continue;
+        }
+
+        // EU, US, AP use standard Blizzard API
         const pagesToScan = region === preferredRegion ? PREFERRED_PAGES : OTHER_PAGES;
         const pageRequests = Array.from({ length: pagesToScan }, (_, i) =>
           fetch(
