@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { detectLocale } from "@/lib/i18n";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
+import SkipLink from "@/components/SkipLink";
 import "./globals.css";
 
 const inter = Inter({
@@ -109,24 +110,7 @@ export default async function RootLayout({
           />
         </head>
       <body className="min-h-full flex flex-col">
-        <a
-          href="#main-content"
-          style={{
-            position: 'absolute',
-            left: '-9999px',
-            zIndex: 9999,
-            padding: '12px 24px',
-            background: 'var(--accent)',
-            color: '#000',
-            fontWeight: 600,
-            textDecoration: 'none',
-            borderRadius: 8,
-          }}
-          onFocus={e => (e.currentTarget.style.left = '16px')}
-          onBlur={e => (e.currentTarget.style.left = '-9999px')}
-        >
-          Skip to content
-        </a>
+        <SkipLink />
         <SiteNav />
         <main id="main-content" style={{ flex: 1 }}>
         {children}
