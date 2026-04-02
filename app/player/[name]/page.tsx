@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { getPlayerHistory, getPlayerLive } from '@/app/actions/player';
 import { getTwitchStatusForPlayer } from '@/app/actions/twitch';
 import { detectLocaleClient, translations } from '@/lib/i18n';
+import { computeStats, bucketizeHistory } from '@/lib/stats';
 import ScrollToTop from '@/components/ScrollToTop';
 import SocialLinksForm from '@/components/SocialLinksForm';
 import PlayerCompare from '@/components/PlayerCompare';
@@ -107,57 +108,8 @@ export default function PlayerPage() {
   const chartData = useMemo(() => {
     const cutoff = timeRange === 'all' ? 0 : Date.now() - RANGE_MS[timeRange];
     const filtered = historyData.filter(h => h.timestamp >= cutoff);
-
-    // Aggregate into time buckets to reduce noise from tiny MMR fluctuations
-    const BUCKET_MS: Record<TimeRange, number> = {
-      '24h': 2 * 60 * 60 * 1000,   // 2-hour buckets
-      '7d': 6 * 60 * 60 * 1000,    // 6-hour buckets
-      '30d': 24 * 60 * 60 * 1000,  // 1-day buckets
-      'all': 72 * 60 * 60 * 1000,  // 3-day buckets
-    };
-    const bucketSize = BUCKET_MS[timeRange];
-
-    const aggregated: HistoryPoint[] = [];
-    let bucketStart: number | null = null;
-    let bucketPoints: HistoryPoint[] = [];
-
-    for (const point of filtered) {
-      if (bucketStart === null) {
-        bucketStart = point.timestamp;
-        bucketPoints = [point];
-      } else if (point.timestamp - bucketStart < bucketSize) {
-        bucketPoints.push(point);
-      } else {
-        // Emit bucket: use the last (most recent) point in the bucket
-        const last = bucketPoints[bucketPoints.length - 1];
-        aggregated.push(last);
-        bucketStart = point.timestamp;
-        bucketPoints = [point];
-      }
-    }
-    // Emit final bucket
-    if (bucketPoints.length > 0) {
-      aggregated.push(bucketPoints[bucketPoints.length - 1]);
-    }
-
-    if (liveData && (aggregated.length === 0 || aggregated[aggregated.length - 1].mmr !== liveData.rating)) {
-      aggregated.push({
-        mmr: liveData.rating,
-        date: 'LIVE',
-        timestamp: Date.now(),
-        isLive: true,
-      });
-    }
-
-    // Filter out consecutive duplicate MMR values (but keep at least 2 points for graph)
-    const deduped = aggregated.filter((point, i) => {
-      if (i === 0) return true;
-      if (aggregated.length - i === 1) return true; // Keep last point
-      return point.mmr !== aggregated[i - 1].mmr;
-    });
-
-    return deduped;
-  }, [historyData, liveData, timeRange]);
+    return bucketizeHistory(filtered, timeRange, liveData ?? undefined);
+  }, [historyData, timeRange, liveData]);
 
   const xAxisTicks = useMemo(() => {
     const maxTicks = 6;
@@ -228,21 +180,8 @@ export default function PlayerPage() {
           setLatestSnapshotRating(last.rating);
         }
 
-        let peak = 0;
-        let gamesCount = 0;
-        for (let i = 0; i < history.length; i++) {
-          if (history[i].rating > peak) peak = history[i].rating;
-          if (i > 0 && history[i].rating !== history[i-1].rating) gamesCount++;
-        }
-
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const recordsLast7Days = history.filter((h: { created_at: string }) => new Date(h.created_at) >= sevenDaysAgo);
-        const gain7d = recordsLast7Days.length > 0 
-          ? history[history.length - 1].rating - recordsLast7Days[0].rating 
-          : 0;
-
-        setStats({ peak, games: gamesCount, gain7d });
+        const statsResult = computeStats(history);
+        setStats({ peak: statsResult.peak, games: statsResult.games, gain7d: statsResult.gain7d });
       } else if (!hResult.success) {
         setError(hResult.error || t.databaseError);
       }
@@ -570,12 +509,16 @@ export default function PlayerPage() {
         )}
 
         {/* Chart */}
-        <div style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-dim)',
-          borderRadius: 10,
-          padding: 16,
-        }}>
+        <div
+          style={{
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-dim)',
+            borderRadius: 10,
+            padding: 16,
+          }}
+          role="region"
+          aria-label="MMR history chart showing player rating changes over time"
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
               MMR History
@@ -585,6 +528,7 @@ export default function PlayerPage() {
                 <button
                   key={key}
                   onClick={() => setTimeRange(key)}
+                  aria-pressed={timeRange === key}
                   style={{
                     padding: '8px 14px',
                     borderRadius: 4,
@@ -603,7 +547,7 @@ export default function PlayerPage() {
             </div>
           </div>
 
-          <div style={{ height: 'clamp(250px, 45vw, 400px)' }}>
+          <div style={{ height: 'clamp(250px, 45vw, 400px)' }} role="img" aria-label={`Line chart showing MMR progression from ${chartData[0]?.date || 'start'} to ${chartData[chartData.length - 1]?.date || 'end'}`}>
             {chartData.length > 1 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
@@ -675,6 +619,26 @@ export default function PlayerPage() {
                 {loadingLive && <Loader2 size={16} color="var(--accent)" className="animate-spin" />}
               </div>
             )}
+          </div>
+
+          {/* Hidden data table for screen readers */}
+          <div style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, overflow: 'hidden' }}>
+            <table aria-label="MMR history data table">
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">MMR Rating</th>
+                </tr>
+              </thead>
+              <tbody>
+                {chartData.map((point, i) => (
+                  <tr key={i}>
+                    <td>{point.isLive ? 'Live' : point.date}</td>
+                    <td>{point.mmr.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

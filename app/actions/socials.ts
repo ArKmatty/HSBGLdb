@@ -1,5 +1,6 @@
 "use server";
 
+import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
@@ -13,6 +14,13 @@ const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
 
 const COOKIE_NAME = "admin_auth";
 const SESSION_TTL = 60 * 60 * 24; // 24 hours
+
+const socialSubmissionSchema = z.object({
+  playerName: z.string().min(1, "Player name is required").max(100, "Player name is too long"),
+  platform: z.enum(["twitch", "twitter", "youtube", "discord", "other"]),
+  username: z.string().min(1, "Username is required").max(100, "Username is too long").regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
+  url: z.string().url("Invalid URL format").optional().or(z.literal("")),
+});
 
 function signSessionToken(secret: string): string {
   const timestamp = Date.now();
@@ -47,20 +55,19 @@ interface SocialSubmission {
 
 export async function submitSocialLink(data: SocialSubmission) {
   try {
-    if (!data.playerName || !data.platform || !data.username) {
-      return { success: false, error: "All fields are required." };
+    const validated = socialSubmissionSchema.safeParse(data);
+    
+    if (!validated.success) {
+      const firstError = validated.error.issues[0]?.message || "Invalid input";
+      return { success: false, error: firstError };
     }
 
-    if (data.username.length > 100) {
-      return { success: false, error: "Username is too long." };
-    }
-
-    const sanitizedUsername = data.username.replace(/[<>"'&]/g, "").trim();
+    const sanitizedUsername = validated.data.username.replace(/[<>"'&]/g, "").trim();
     if (!sanitizedUsername) {
       return { success: false, error: "Username contains invalid characters." };
     }
 
-    const url = data.url || buildPlatformUrl(data.platform, sanitizedUsername);
+    const url = validated.data.url || buildPlatformUrl(validated.data.platform, sanitizedUsername);
 
     const { error } = await supabaseAdmin
       .from("social_submissions")

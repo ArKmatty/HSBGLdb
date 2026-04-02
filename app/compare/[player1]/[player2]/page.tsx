@@ -6,6 +6,7 @@ import { ChevronLeft, Trophy, Activity, Swords, AlertCircle, Loader2, GitCompare
 import Link from 'next/link';
 import { getPlayerHistory, getPlayerLive } from '@/app/actions/player';
 import { detectLocaleClient, translations } from '@/lib/i18n';
+import { computeStats } from '@/lib/stats';
 import ScrollToTop from '@/components/ScrollToTop';
 import { ChartSkeleton } from '@/components/Skeleton';
 
@@ -41,22 +42,6 @@ const RANGE_MS: Record<TimeRange, number> = {
   '30d': 30 * 24 * 60 * 60 * 1000,
   'all': Infinity,
 };
-
-function computeStats(history: HistoryPoint[]) {
-  let peak = 0;
-  let gamesCount = 0;
-  for (let i = 0; i < history.length; i++) {
-    if (history[i].mmr > peak) peak = history[i].mmr;
-    if (i > 0 && history[i].mmr !== history[i - 1].mmr) gamesCount++;
-  }
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const records7d = history.filter(h => new Date(h.fullDate || h.timestamp) >= sevenDaysAgo);
-  const gain7d = records7d.length > 0
-    ? history[history.length - 1].mmr - records7d[0].mmr
-    : 0;
-  return { peak, games: gamesCount, gain7d };
-}
 
 export default function ComparePage() {
   const { player1, player2 } = useParams();

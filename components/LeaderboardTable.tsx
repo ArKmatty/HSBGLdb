@@ -48,6 +48,16 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale,
     p.accountid.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  if (filtered.length === 0 && searchTerm) {
+    return (
+      <EmptyState
+        type="no-data"
+        title="No players found"
+        description={`No players match "${searchTerm}". Try a different search term.`}
+      />
+    );
+  }
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');

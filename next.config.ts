@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   async headers() {
@@ -15,11 +16,11 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://*.sentry.io",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co https://*.blizzard.com https://*.blizzard.cn https://id.twitch.tv https://api.twitch.tv https://va.vercel-scripts.com",
+              "connect-src 'self' https://*.supabase.co https://*.blizzard.com https://*.blizzard.cn https://id.twitch.tv https://api.twitch.tv https://va.vercel-scripts.com https://*.sentry.io",
               "frame-ancestors 'none'",
               "form-action 'self'",
               "base-uri 'self'",
@@ -31,4 +32,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+});
