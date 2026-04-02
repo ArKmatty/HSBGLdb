@@ -131,10 +131,16 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
     }
     console.log(`[Blizzard CN] Found ${snapshots?.length || 0} snapshots for ${playerNames.length} players (region filter: ${region})`);
     
-    // Debug: log if we find snapshots with wrong region
+    // Debug: log specific player snapshots
     if (snapshots && snapshots.length > 0) {
       const regionsFound = new Set(snapshots.map(s => s.region));
       console.log(`[Blizzard CN] Snapshot regions found:`, Array.from(regionsFound));
+      
+      // Log specific data for "jeef" if present
+      const jeefSnapshots = snapshots.filter(s => s.accountId.toLowerCase() === 'jeef');
+      if (jeefSnapshots.length > 0) {
+        console.log(`[Blizzard CN] jeef snapshots:`, jeefSnapshots);
+      }
     }
 
     const snapshotMap = new Map<string, number>();
