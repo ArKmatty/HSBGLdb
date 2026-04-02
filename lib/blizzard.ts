@@ -118,13 +118,24 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
 
     const playerNames = currentPlayers.map(p => p.accountid);
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: snapshots } = await supabaseAdmin
+    const { data: snapshots, error: snapError } = await supabaseAdmin
       .from('leaderboard_history')
       .select('accountId, rating, created_at, region')
       .in('accountId', playerNames)
       .eq('region', region)
       .gte('created_at', yesterday)
       .order('created_at', { ascending: true });
+
+    if (snapError) {
+      console.error(`[Blizzard CN] Snapshot query error:`, snapError.message);
+    }
+    console.log(`[Blizzard CN] Found ${snapshots?.length || 0} snapshots for ${playerNames.length} players (region filter: ${region})`);
+    
+    // Debug: log if we find snapshots with wrong region
+    if (snapshots && snapshots.length > 0) {
+      const regionsFound = new Set(snapshots.map(s => s.region));
+      console.log(`[Blizzard CN] Snapshot regions found:`, Array.from(regionsFound));
+    }
 
     const snapshotMap = new Map<string, number>();
     for (const s of snapshots || []) {
