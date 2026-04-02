@@ -5,6 +5,7 @@ import { Search, TrendingUp, Sun, Moon, FileText } from 'lucide-react';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { searchPlayers } from '@/app/actions/player';
 import { EmptyState } from './EmptyState';
+import { useFocusTrap } from '@/lib/useFocusTrap';
 
 const REGIONS = ['EU', 'US', 'AP', 'CN'] as const;
 
@@ -21,6 +22,7 @@ export default function SiteNav() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
+  const trapRef = useFocusTrap(searchOpen);
 
   useEffect(() => {
     if (searchOpen && inputRef.current) {
@@ -241,6 +243,7 @@ export default function SiteNav() {
       {/* Search modal */}
       {searchOpen && (
         <div
+          ref={trapRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="search-modal-title"

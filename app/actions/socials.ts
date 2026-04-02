@@ -1,14 +1,42 @@
 "use server";
 
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
+import crypto from "crypto";
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET;
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
+
+const COOKIE_NAME = "admin_auth";
+const SESSION_TTL = 60 * 60 * 24; // 24 hours
+
+function signSessionToken(secret: string): string {
+  const timestamp = Date.now();
+  const random = crypto.randomBytes(16).toString("hex");
+  const payload = `${timestamp}:${random}`;
+  const signature = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+  return `${payload}.${signature}`;
+}
+
+function verifySessionToken(token: string, secret: string): boolean {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return false;
+    const payload = `${parts[0]}.${parts[1]}`;
+    const signature = parts[2];
+    const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+    const timestamp = parseInt(parts[0], 10);
+    if (isNaN(timestamp)) return false;
+    if (Date.now() - timestamp > SESSION_TTL * 1000) return false;
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
 
 interface SocialSubmission {
   playerName: string;
@@ -23,14 +51,23 @@ export async function submitSocialLink(data: SocialSubmission) {
       return { success: false, error: "All fields are required." };
     }
 
-    const url = data.url || buildPlatformUrl(data.platform, data.username);
+    if (data.username.length > 100) {
+      return { success: false, error: "Username is too long." };
+    }
 
-    const { error } = await supabase
+    const sanitizedUsername = data.username.replace(/[<>"'&]/g, "").trim();
+    if (!sanitizedUsername) {
+      return { success: false, error: "Username contains invalid characters." };
+    }
+
+    const url = data.url || buildPlatformUrl(data.platform, sanitizedUsername);
+
+    const { error } = await supabaseAdmin
       .from("social_submissions")
       .insert({
         player_name: data.playerName,
         platform: data.platform,
-        username: data.username,
+        username: sanitizedUsername,
         url,
         status: "pending",
       });
@@ -53,7 +90,7 @@ export async function getPendingSubmissions() {
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("social_submissions")
       .select("*")
       .eq("status", "pending")
@@ -77,7 +114,7 @@ export async function approveSubmission(id: string) {
   }
 
   try {
-    const { data: submission, error: fetchError } = await supabase
+    const { data: submission, error: fetchError } = await supabaseAdmin
       .from("social_submissions")
       .select("*")
       .eq("id", id)
@@ -88,7 +125,7 @@ export async function approveSubmission(id: string) {
     }
 
     const platformCol = submission.platform.toLowerCase();
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from("player_socials")
       .update({ [platformCol]: submission.username })
       .eq("accountid", submission.player_name);
@@ -97,7 +134,7 @@ export async function approveSubmission(id: string) {
       console.error("[SocialAdmin] Update error:", updateError.message);
     }
 
-    const { error: statusError } = await supabase
+    const { error: statusError } = await supabaseAdmin
       .from("social_submissions")
       .update({ status: "approved" })
       .eq("id", id);
@@ -121,7 +158,7 @@ export async function rejectSubmission(id: string) {
   }
 
   try {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("social_submissions")
       .update({ status: "rejected" })
       .eq("id", id);
@@ -166,12 +203,13 @@ export async function loginAdmin(password: string) {
 
   loginAttempts.delete(ip);
 
+  const token = signSessionToken(ADMIN_SECRET);
   const cookieStore = await cookies();
-  cookieStore.set("admin_auth", ADMIN_SECRET, {
+  cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24, // 24 hours
+    maxAge: SESSION_TTL,
     path: "/",
   });
 
@@ -180,15 +218,16 @@ export async function loginAdmin(password: string) {
 
 export async function logoutAdmin() {
   const cookieStore = await cookies();
-  cookieStore.delete("admin_auth");
+  cookieStore.delete(COOKIE_NAME);
   return { success: true };
 }
 
 async function isAdminAuthenticated(): Promise<boolean> {
   if (!ADMIN_SECRET) return false;
   const cookieStore = await cookies();
-  const auth = cookieStore.get("admin_auth");
-  return auth?.value === ADMIN_SECRET;
+  const auth = cookieStore.get(COOKIE_NAME);
+  if (!auth?.value) return false;
+  return verifySessionToken(auth.value, ADMIN_SECRET);
 }
 
 function buildPlatformUrl(platform: string, username: string): string {

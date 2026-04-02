@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { ChevronLeft, TrendingUp, Trophy, Activity, Swords, Globe, AlertCircle, Loader2, Award, Tv } from 'lucide-react';
 import Link from 'next/link';
@@ -78,14 +78,17 @@ const RANGE_MS: Record<TimeRange, number> = {
 
 export default function PlayerPage() {
   const { name } = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const decodedName = decodeURIComponent(name as string);
+  const urlRegion = searchParams.get('region')?.toUpperCase();
   const [locale] = useState(() => detectLocaleClient());
   const t = translations[locale];
   const [historyData, setHistoryData] = useState<HistoryPoint[]>([]);
   const [liveData, setLiveData] = useState<LiveData | null>(null);
   const [twitchData, setTwitchData] = useState<TwitchData | null>(null);
   const [stats, setStats] = useState({ peak: 0, games: 0, gain7d: 0 });
+  const [latestSnapshotRating, setLatestSnapshotRating] = useState<number | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [loadingLive, setLoadingLive] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -181,76 +184,81 @@ export default function PlayerPage() {
       
       let lastRating = 0;
       let lastDate = "";
-      let playerRegion: string | undefined;
+      let playerRegion: string | undefined = urlRegion;
 
-      try {
-        const lResult = await getPlayerLive(decodedName, lastRating, lastDate);
-        if (lResult.success && lResult.live) {
-          setLiveData(lResult.live);
+      const [lResult, hResult, tData] = await Promise.all([
+        getPlayerLive(decodedName, lastRating, lastDate).catch((err) => {
+          console.error("Live fetch error:", err);
+          return { success: false, live: null };
+        }),
+        getPlayerHistory(decodedName, playerRegion, 100).catch((err) => {
+          console.error("History fetch error:", err);
+          return { success: false, history: [], error: 'Database error' };
+        }),
+        getTwitchStatusForPlayer(decodedName).catch((e) => {
+          console.error("Twitch server fetch error:", e);
+          return null;
+        }),
+      ]);
+
+      if (lResult.success && lResult.live) {
+        setLiveData(lResult.live);
+        if (!playerRegion) {
           playerRegion = lResult.live.region;
         }
-      } catch (err) {
-        console.error("Live fetch error:", err);
-      } finally {
-        setLoadingLive(false);
+      } else {
+        console.log(`[PlayerPage] Live scan returned null for ${decodedName}, falling back to snapshot`);
       }
+      setLoadingLive(false);
 
-      try {
-        const hResult = await getPlayerHistory(decodedName, playerRegion);
-        if (hResult.success && hResult.history) {
-          const history = hResult.history;
-          const formatted = history.map((h: { rating: number; created_at: string }) => ({
-            mmr: h.rating,
-            date: new Date(h.created_at).toLocaleTimeString(localeStr, { hour: '2-digit', minute: '2-digit' }),
-            timestamp: new Date(h.created_at).getTime(),
-            fullDate: h.created_at,
-          }));
-          setHistoryData(formatted);
+      if (hResult.success && hResult.history) {
+        const history = hResult.history;
+        const formatted = history.map((h: { rating: number; created_at: string }) => ({
+          mmr: h.rating,
+          date: new Date(h.created_at).toLocaleTimeString(localeStr, { hour: '2-digit', minute: '2-digit' }),
+          timestamp: new Date(h.created_at).getTime(),
+          fullDate: h.created_at,
+        }));
+        setHistoryData(formatted);
 
-          if (history.length > 0) {
-            const last = history[history.length - 1];
-            lastRating = last.rating;
-            lastDate = last.created_at;
-          }
-
-          let peak = 0;
-          let gamesCount = 0;
-          for (let i = 0; i < history.length; i++) {
-            if (history[i].rating > peak) peak = history[i].rating;
-            if (i > 0 && history[i].rating !== history[i-1].rating) gamesCount++;
-          }
-
-          const sevenDaysAgo = new Date();
-          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          const recordsLast7Days = history.filter((h: { created_at: string }) => new Date(h.created_at) >= sevenDaysAgo);
-          const gain7d = recordsLast7Days.length > 0 
-            ? history[history.length - 1].rating - recordsLast7Days[0].rating 
-            : 0;
-
-          setStats({ peak, games: gamesCount, gain7d });
-        } else if (!hResult.success) {
-            setError(hResult.error || t.databaseError);
+        if (history.length > 0) {
+          const last = history[history.length - 1];
+          lastRating = last.rating;
+          lastDate = last.created_at;
+          setLatestSnapshotRating(last.rating);
         }
-      } catch (err) {
-        console.error("History fetch error:", err);
-      } finally {
-        setLoadingHistory(false);
-      }
 
-      try {
-         const tData = await getTwitchStatusForPlayer(decodedName);
-         if (tData) {
-            setTwitchData(tData);
-         }
-      } catch (e) {
-        console.error("Twitch server fetch error:", e);
+        let peak = 0;
+        let gamesCount = 0;
+        for (let i = 0; i < history.length; i++) {
+          if (history[i].rating > peak) peak = history[i].rating;
+          if (i > 0 && history[i].rating !== history[i-1].rating) gamesCount++;
+        }
+
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const recordsLast7Days = history.filter((h: { created_at: string }) => new Date(h.created_at) >= sevenDaysAgo);
+        const gain7d = recordsLast7Days.length > 0 
+          ? history[history.length - 1].rating - recordsLast7Days[0].rating 
+          : 0;
+
+        setStats({ peak, games: gamesCount, gain7d });
+      } else if (!hResult.success) {
+        setError(hResult.error || t.databaseError);
+      }
+      setLoadingHistory(false);
+
+      if (tData) {
+        setTwitchData(tData);
       }
     }
     
     fetchAll();
-  }, [decodedName, localeStr, t]);
+  }, [decodedName, localeStr, t, urlRegion]);
 
-  const isNewPeak = (liveData?.rating ?? 0) > stats.peak && stats.peak > 0;
+  const currentRating = liveData?.rating ?? latestSnapshotRating ?? 0;
+  const isNewPeak = currentRating > stats.peak && stats.peak > 0;
+  const displayPeak = Math.max(stats.peak, liveData?.rating ?? 0);
 
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--bg-base)' }}>
@@ -269,7 +277,7 @@ export default function PlayerPage() {
 
         {/* Back link */}
         <Link
-          href="/"
+          href={`/?region=${urlRegion || 'EU'}`}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -500,7 +508,7 @@ export default function PlayerPage() {
                 color: liveData ? 'var(--accent)' : 'var(--text-muted)',
                 transition: 'color 300ms',
               }}>
-                {(liveData?.rating || stats.peak || 0).toLocaleString()}
+                {(liveData?.rating ?? latestSnapshotRating ?? stats.peak ?? 0).toLocaleString()}
               </span>
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>MMR</span>
             </div>
@@ -510,7 +518,7 @@ export default function PlayerPage() {
         {/* Stats cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 28 }}>
           {[
-            { title: t.historicalPeak, value: stats.peak || (liveData ? liveData.rating : '-'), icon: <Trophy size={20} />, color: 'var(--accent)' },
+            { title: t.historicalPeak, value: displayPeak || '-', icon: <Trophy size={20} />, color: 'var(--accent)' },
             { title: t.trend7d, value: `${stats.gain7d > 0 ? '+' : ''}${stats.gain7d}`, icon: <Activity size={20} />, color: stats.gain7d >= 0 ? 'var(--green)' : 'var(--red)' },
             { title: t.matchesAnalyzed, value: stats.games, icon: <Swords size={20} />, color: 'var(--purple)' },
           ].map(item => (

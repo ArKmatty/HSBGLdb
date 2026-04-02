@@ -1,8 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+import { supabaseAdmin } from './supabase';
 
 export interface PatchNote {
   id: string;
@@ -79,13 +75,13 @@ function cleanHtml(html: string): string {
 }
 
 export async function fetchPatchNotes(limit = 10): Promise<PatchNote[]> {
-  if (!supabase) {
+  if (!supabaseAdmin) {
     console.warn('[PatchNotes] Supabase not configured');
     return [];
   }
 
   try {
-    const { data: existing, error } = await supabase
+    const { data: existing, error } = await supabaseAdmin
       .from('patch_notes')
       .select('*')
       .order('date', { ascending: false })
@@ -116,10 +112,8 @@ export async function fetchPatchNotes(limit = 10): Promise<PatchNote[]> {
 
 export async function refreshPatchNotes(): Promise<{ success: boolean; count?: number; error?: string }> {
   console.log('[PatchNotes] Starting refresh...');
-  console.log('[PatchNotes] Supabase URL:', supabaseUrl ? 'set' : 'NOT SET');
-  console.log('[PatchNotes] Supabase Key:', supabaseKey ? 'set' : 'NOT SET');
   
-  if (!supabase) {
+  if (!supabaseAdmin) {
     console.log('[PatchNotes] Supabase client not initialized');
     return { success: false, error: 'Database not configured' };
   }
@@ -161,7 +155,7 @@ export async function refreshPatchNotes(): Promise<{ success: boolean; count?: n
       const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       const compositeId = `${slug}-${date.replace(/\//g, '-')}`;
       
-      const { data: existing } = await supabase
+      const { data: existing } = await supabaseAdmin
         .from('patch_notes')
         .select('id')
         .eq('id', compositeId)
@@ -198,7 +192,7 @@ export async function refreshPatchNotes(): Promise<{ success: boolean; count?: n
       const cleanBgChanges = cleanHtml(bgChanges);
       const storeChanges = cleanBgChanges || summary;
 
-      const { error: upsertError } = await supabase
+      const { error: upsertError } = await supabaseAdmin
         .from('patch_notes')
         .upsert({
           id: compositeId,

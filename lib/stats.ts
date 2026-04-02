@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabaseAdmin } from './supabase';
 import { unstable_cache } from 'next/cache';
 
 export const getTopMovers = unstable_cache(
@@ -8,7 +8,7 @@ export const getTopMovers = unstable_cache(
     
     // Per ottimizzare senza RPC: estraiamo unicamente i rating delle ultime 24h 
     // e li calcoliamo lato server qui, dopodiché NEXTJS cacha il risultato per mezz'ora.
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('leaderboard_history')
       .select('accountId, rating') // Usa la colonna esatta del DB che ha la "I" maiuscola
       .eq('region', region)
@@ -51,7 +51,7 @@ export const getTopFallers = unstable_cache(
   async (region: string = 'EU') => {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('leaderboard_history')
       .select('accountId, rating')
       .eq('region', region)

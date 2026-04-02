@@ -115,8 +115,8 @@ export default async function Home({ searchParams }: Props) {
         </div>
 
         <RecentSearches locale={locale} />
-        <TopMoversWidget players={topMovers} fallers={topFallers} locale={locale} />
-        <LeaderboardTable players={players} twitchStatuses={twitchStatuses} locale={locale} />
+        <TopMoversWidget players={topMovers} fallers={topFallers} locale={locale} region={region} />
+        <LeaderboardTable players={players} twitchStatuses={twitchStatuses} locale={locale} region={region} />
 
         {/* Pagination */}
         <nav aria-label="Pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 28 }} className="animate-fade-in">

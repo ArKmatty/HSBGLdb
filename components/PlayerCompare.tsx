@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { GitCompare, X, Search, Loader2 } from 'lucide-react';
 import { searchPlayers } from '@/app/actions/player';
+import { useFocusTrap } from '@/lib/useFocusTrap';
 
 export default function PlayerCompare({ currentName }: { currentName: string }) {
   const router = useRouter();
@@ -15,15 +16,12 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
+  const trapRef = useFocusTrap(open);
 
   useEffect(() => {
     if (open && inputRef.current) {
       inputRef.current.focus();
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
     }
-    return () => { document.body.style.overflow = ''; };
   }, [open]);
 
   const handleSearch = useCallback(async (query: string) => {
@@ -105,6 +103,7 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
 
   return (
     <div
+      ref={trapRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="compare-modal-title"

@@ -11,9 +11,11 @@ interface Mover {
   rating: number;
 }
 
-export default function TopMoversWidget({ players, fallers, locale }: { players: Mover[]; fallers?: Mover[]; locale: Locale }) {
+export default function TopMoversWidget({ players, fallers, locale, region }: { players: Mover[]; fallers?: Mover[]; locale: Locale; region?: string }) {
   const t = translations[locale];
   if (!players || players.length === 0) return null;
+
+  const regionParam = region || 'EU';
 
   return (
     <section style={{ marginBottom: 28 }}>
@@ -37,7 +39,7 @@ export default function TopMoversWidget({ players, fallers, locale }: { players:
         {players.map((p, idx) => (
           <Link
             key={p.accountid}
-            href={`/player/${p.accountid}`}
+            href={`/player/${p.accountid}?region=${regionParam}`}
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -106,7 +108,7 @@ export default function TopMoversWidget({ players, fallers, locale }: { players:
             {fallers.map((p, idx) => (
               <Link
                 key={p.accountid}
-                href={`/player/${p.accountid}`}
+                href={`/player/${p.accountid}?region=${regionParam}`}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',

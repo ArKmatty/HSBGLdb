@@ -127,12 +127,6 @@ a { text-decoration: none; color: inherit; }
   50% { box-shadow: 0 0 16px var(--accent-glow); }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out forwards;
-  animation-delay: 0.1s;
-  opacity: 0;
-}
-
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -143,6 +137,12 @@ a { text-decoration: none; color: inherit; }
   to { opacity: 1; }
 }
 
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+  animation-delay: 0.1s;
+  opacity: 0;
+}
+
 body {
   animation: pageIn 0.2s ease-out;
 }
@@ -151,6 +151,16 @@ body {
   background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-subtle) 50%, var(--bg-elevated) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ── Mobile Responsiveness ── */

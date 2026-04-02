@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabaseAdmin } from './supabase';
 
 interface PlayerRow {
   accountid: string;
@@ -28,7 +28,7 @@ export async function ingestLeaderboardSnapshot(region: string, players: PlayerR
   }
 
   try {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('leaderboard_history')
       .insert(rows);
 

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabaseAdmin } from './supabase';
 import { ingestLeaderboardSnapshot } from './ingest';
 import { unstable_cache } from 'next/cache';
 
@@ -98,7 +98,7 @@ export const getLeaderboard = unstable_cache(
 
       const playerNames = currentPlayers.map(p => p.accountid);
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: snapshots } = await supabase
+      const { data: snapshots } = await supabaseAdmin
         .from('leaderboard_history')
         .select('accountId, rating, created_at, region')
         .in('accountId', playerNames)
@@ -154,7 +154,7 @@ export const getLeaderboard = unstable_cache(
 
     const playerNames = currentPlayers.map(p => p.accountid);
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: snapshots } = await supabase
+    const { data: snapshots } = await supabaseAdmin
       .from('leaderboard_history')
       .select('accountId, rating, created_at, region')
       .in('accountId', playerNames)
@@ -189,11 +189,11 @@ export const getPlayerLiveStats = unstable_cache(
   async (name: string): Promise<BlizzardPlayerLive | null> => {
     const regions = ['EU', 'US', 'AP'];
     const PREFERRED_PAGES = 10;
-    const OTHER_PAGES = 4;
+    const OTHER_PAGES = 5;
 
     let preferredRegion: string | null = null;
     try {
-      const { data: history } = await supabase
+      const { data: history } = await supabaseAdmin
         .from('leaderboard_history')
         .select('region')
         .eq('accountId', name)

@@ -19,7 +19,7 @@ type SortKey = 'rank' | 'name' | 'mmr' | 'delta';
 
 const RANK_COLORS: Record<number, string> = { 1: '#e8a838', 2: '#8b8fa3', 3: '#a0722a' };
 
-export default function LeaderboardTable({ players, twitchStatuses = {}, locale }: { players: Player[]; twitchStatuses?: Record<string, { isLive: boolean; twitchUsername?: string; title?: string; viewerCount?: number }>; locale: Locale }) {
+export default function LeaderboardTable({ players, twitchStatuses = {}, locale, region }: { players: Player[]; twitchStatuses?: Record<string, { isLive: boolean; twitchUsername?: string; title?: string; viewerCount?: number }>; locale: Locale; region?: string }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>('rank');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -139,8 +139,16 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
                     key={key}
                     className={i === 3 ? 'hide-mobile' : ''}
                     onClick={() => handleSort(key)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleSort(key);
+                      }
+                    }}
                     role="columnheader"
+                    tabIndex={0}
                     aria-sort={sortKey === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    aria-label={`Sort by ${label}`}
                     style={{
                       padding: '10px 16px',
                       textAlign: align,
@@ -204,7 +212,7 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale 
                     <td style={{ padding: '12px 16px', minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                         <Link
-                          href={`/player/${player.accountid}`}
+                          href={`/player/${player.accountid}?region=${region || 'EU'}`}
                           style={{
                             fontSize: 14,
                             fontWeight: 600,

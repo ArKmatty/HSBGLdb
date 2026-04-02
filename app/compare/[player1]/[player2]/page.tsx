@@ -116,7 +116,7 @@ export default function ComparePage() {
     void (async () => {
       await Promise.all([fetchPlayer(0), fetchPlayer(1)]);
     })();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchPlayer]);
 
   const chartData = useMemo(() => {
     const cutoff = timeRange === 'all' ? 0 : now - RANGE_MS[timeRange];

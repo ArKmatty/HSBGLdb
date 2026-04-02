@@ -1,6 +1,6 @@
 "use server";
 import { unstable_cache } from 'next/cache';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 
 const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
@@ -85,7 +85,7 @@ export async function getTwitchLiveStatus(usernames: string[]) {
  */
 export async function getTwitchStatusForPlayer(accountId: string) {
     try {
-        const { data: socials } = await supabase
+        const { data: socials } = await supabaseAdmin
             .from('player_socials')
             .select('twitchusername')
             .ilike('accountid', accountId)
@@ -111,7 +111,7 @@ export async function getTwitchStatusForPlayer(accountId: string) {
  */
 const getAllSocials = unstable_cache(
   async () => {
-    const { data: socials } = await supabase
+    const { data: socials } = await supabaseAdmin
       .from('player_socials')
       .select('accountid, twitchusername');
     return socials || [];

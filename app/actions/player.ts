@@ -1,14 +1,14 @@
 "use server";
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getPlayerLiveStats } from '@/lib/blizzard';
 
 /**
  * Recupera solo lo storico da Supabase (molto veloce)
  */
-export async function getPlayerHistory(name: string, region?: string) {
+export async function getPlayerHistory(name: string, region?: string, limit = 100) {
   const start = Date.now();
   try {
-    let query = supabase
+    let query = supabaseAdmin
       .from('leaderboard_history')
       .select('rating, created_at, rank, region')
       .eq('accountId', name);
@@ -17,7 +17,7 @@ export async function getPlayerHistory(name: string, region?: string) {
       query = query.eq('region', region);
     }
 
-    query = query.order('created_at', { ascending: true });
+    query = query.order('created_at', { ascending: true }).limit(limit);
 
     const { data: history, error: hError } = await query;
 
@@ -38,7 +38,7 @@ export async function getPlayerHistory(name: string, region?: string) {
 export async function searchPlayers(query: string) {
   if (!query || query.length < 2) return [];
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('leaderboard_history')
       .select('accountId')
       .ilike('accountId', `%${query}%`)
@@ -78,7 +78,7 @@ export async function getPlayerLive(name: string, lastHistoryRating?: number, la
       
       // Cooldown 5 minuti
       if (live.rating !== (lastHistoryRating || 0) && (now.getTime() - lastTime.getTime() > 300000)) {
-         const { error: iError } = await supabase.from('leaderboard_history').insert([{
+         const { error: iError } = await supabaseAdmin.from('leaderboard_history').insert([{
            accountId: live.accountid,
            rating: live.rating,
            rank: live.rank,

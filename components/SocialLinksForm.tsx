@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { X, Plus, Check, AlertCircle, Loader2 } from "lucide-react";
 import { submitSocialLink } from "@/app/actions/socials";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 const PLATFORMS = [
   { key: "twitch", label: "Twitch", prefix: "twitch.tv/" },
@@ -18,6 +19,7 @@ export default function SocialLinksForm({ playerName }: { playerName: string }) 
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const trapRef = useFocusTrap(open);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,17 +42,7 @@ export default function SocialLinksForm({ playerName }: { playerName: string }) 
     setSubmitted(false);
     setUsername("");
     setError(null);
-    document.body.style.overflow = '';
   };
-
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [open]);
 
   const selectedPlatform = PLATFORMS.find(p => p.key === platform);
 
@@ -87,6 +79,7 @@ export default function SocialLinksForm({ playerName }: { playerName: string }) 
 
       {open && (
         <div
+          ref={trapRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="social-modal-title"

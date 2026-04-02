@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export default async function sitemap() {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://your-domain.com');
@@ -14,7 +14,7 @@ export default async function sitemap() {
 
   let playerUrls: Array<{ url: string; lastModified: Date; changeFrequency: string; priority: number }> = [];
   try {
-    const { data: topPlayers } = await supabase
+    const { data: topPlayers } = await supabaseAdmin
       .from('leaderboard_history')
       .select('accountId, region, created_at')
       .order('created_at', { ascending: false })
