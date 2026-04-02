@@ -116,18 +116,36 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
 
     void ingestLeaderboardSnapshot(region, currentPlayers);
 
+    // Wait briefly for ingest to complete before querying snapshots
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     const playerNames = currentPlayers.map(p => p.accountid);
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: snapshots, error: snapError } = await supabaseAdmin
-      .from('leaderboard_history')
-      .select('accountId, rating, created_at, region')
-      .in('accountId', playerNames)
-      .eq('region', region)
-      .gte('created_at', yesterday)
-      .order('created_at', { ascending: true });
+    
+    // Retry snapshot query up to 3 times on failure
+    let snapshots: any[] = [];
+    let snapError: any = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const result = await supabaseAdmin
+          .from('leaderboard_history')
+          .select('accountId, rating, created_at, region')
+          .in('accountId', playerNames)
+          .eq('region', region)
+          .gte('created_at', yesterday)
+          .order('created_at', { ascending: true });
+        
+        snapshots = result.data || [];
+        snapError = result.error;
+        if (!snapError) break; // Success
+      } catch (e) {
+        console.warn(`[Blizzard CN] Snapshot query attempt ${attempt + 1} failed:`, e);
+        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
 
     if (snapError) {
-      console.error(`[Blizzard CN] Snapshot query error:`, snapError.message);
+      console.error(`[Blizzard CN] Snapshot query error after retries:`, snapError.message);
     }
     console.log(`[Blizzard CN] Found ${snapshots?.length || 0} snapshots for ${playerNames.length} players (region filter: ${region})`);
     
