@@ -150,10 +150,19 @@ export async function approveSubmission(id: string) {
     }
 
     const platformCol = submission.platform.toLowerCase();
+    // Map platform keys to actual DB column names
+    const colMap: Record<string, string> = {
+      twitch: "twitchusername",
+      twitter: "twitter",
+      youtube: "youtube",
+      discord: "discord",
+    };
+    const col = colMap[platformCol] || platformCol;
+
     const { error: upsertError } = await supabaseAdmin
       .from("player_socials")
       .upsert(
-        { accountid: submission.player_name, [platformCol]: submission.username },
+        { accountid: submission.player_name, [col]: submission.username },
         { onConflict: "accountid" }
       );
 
