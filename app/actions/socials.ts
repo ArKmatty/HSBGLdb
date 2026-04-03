@@ -104,11 +104,24 @@ export async function submitSocialLink(data: SocialSubmission) {
  * @returns Object with success status and array of pending submissions
  */
 export async function getPendingSubmissions() {
-  if (!await isAdminAuthenticated()) {
+  const authResult = await isAdminAuthenticated();
+  console.log(`[SocialAdmin] isAdminAuthenticated: ${authResult}`);
+  if (!authResult) {
     return { success: false, error: "Unauthorized." };
   }
 
   try {
+    // First, check total count
+    const { count: totalCount, error: countError } = await supabaseAdmin
+      .from("social_submissions")
+      .select("*", { count: 'exact', head: true });
+
+    if (countError) {
+      console.error("[SocialAdmin] Count error:", countError.message, JSON.stringify(countError));
+    } else {
+      console.log(`[SocialAdmin] Total rows in table: ${totalCount}`);
+    }
+
     const { data, error } = await supabaseAdmin
       .from("social_submissions")
       .select("*")
@@ -121,6 +134,9 @@ export async function getPendingSubmissions() {
     }
 
     console.log(`[SocialAdmin] Found ${data?.length || 0} pending submissions`);
+    if (data?.length) {
+      console.log(`[SocialAdmin] First pending:`, JSON.stringify(data[0]));
+    }
     return { success: true, submissions: data || [] };
   } catch (err) {
     console.error("[SocialAdmin] Unexpected error:", err);
