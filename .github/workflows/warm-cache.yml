@@ -1,0 +1,29 @@
+name: Warm Cache on Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  warm-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Vercel deployment
+        run: sleep 60
+
+      - name: Warm cache
+        run: |
+          echo "Warming cache at ${{ secrets.SITE_URL }}/api/warm-cache"
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.SITE_URL }}/api/warm-cache" 2>&1)
+
+          HTTP=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP: $HTTP"
+          echo "Body: $BODY"
