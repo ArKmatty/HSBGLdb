@@ -137,17 +137,24 @@ const getAllSocials = unstable_cache(
 export async function getTwitchStatusesForLeaderboard(accountIds: string[]) {
     try {
         const socials = await getAllSocials();
+        console.log(`[Twitch] getAllSocials returned ${socials?.length || 0} records`);
 
         if (socials.length > 0) {
             const relevantSocials = socials.filter(s =>
                 accountIds.some(id => id.toLowerCase() === s.accountid.toLowerCase())
             );
 
+            console.log(`[Twitch] Found ${relevantSocials.length} relevant socials for leaderboard`);
+            if (relevantSocials.length > 0) {
+              console.log(`[Twitch] Relevant usernames:`, relevantSocials.map(s => s.twitchusername).join(', '));
+            }
+
             if (relevantSocials.length === 0) return {};
 
             const twitchUsernames = relevantSocials.map(s => s.twitchusername);
             const liveMap = await getTwitchLiveStatus(twitchUsernames);
-            
+            console.log(`[Twitch] Live map keys:`, Object.keys(liveMap).join(', ') || '(none)');
+
             const results: Record<string, { isLive: boolean; twitchUsername: string; title?: string; viewerCount?: number }> = {};
             relevantSocials.forEach(s => {
                 const status = liveMap[s.twitchusername.toLowerCase()];
