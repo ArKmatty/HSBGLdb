@@ -75,9 +75,11 @@ export async function GET(request: Request) {
 
   try {
     const allPlayersToInsert: Array<{ accountId: string; rating: number; rank: number; region: string; created_at: string }> = [];
+    const syncStats: Record<string, { fetched: number; errors: number }> = {};
 
     for (const region of REGIONS) {
       let regionPlayers: Array<{ accountid: string; rating: number; rank: number }> = [];
+      syncStats[region] = { fetched: 0, errors: 0 };
 
       if (region === 'CN') {
         const cnRequests = Array.from({ length: PAGES_TO_FETCH }, (_, i) => fetchCnLeaderboard(i + 1));
@@ -91,7 +93,10 @@ export async function GET(request: Request) {
             { cache: 'no-store' },
             `${region} Sync page ${page}`
           ).then(res => {
-            if (!res.ok) return { leaderboard: { rows: [] } };
+            if (!res.ok) {
+              syncStats[region].errors++;
+              return { leaderboard: { rows: [] } };
+            }
             return res.json();
           });
         });
@@ -99,6 +104,8 @@ export async function GET(request: Request) {
         const results = await Promise.all(pageRequests);
         regionPlayers = results.flatMap(data => data.leaderboard?.rows || []);
       }
+
+      syncStats[region].fetched = regionPlayers.length;
 
       regionPlayers.forEach(p => {
         if (p && p.accountid) {
@@ -112,6 +119,8 @@ export async function GET(request: Request) {
         }
       });
     }
+
+    console.log('[CRON JOB] Sync stats:', JSON.stringify(syncStats));
 
     if (allPlayersToInsert.length === 0) {
       return NextResponse.json({ success: false, error: '0 giocatori estratti. API non operante.' }, { status: 500 });
