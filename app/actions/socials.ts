@@ -281,11 +281,17 @@ export async function logoutAdmin() {
 }
 
 async function isAdminAuthenticated(): Promise<boolean> {
-  if (!ADMIN_SECRET) return false;
+  if (!ADMIN_SECRET) {
+    console.log('[SocialAdmin] ADMIN_SECRET is not configured');
+    return false;
+  }
   const cookieStore = await cookies();
   const auth = cookieStore.get(COOKIE_NAME);
+  console.log(`[SocialAdmin] admin_auth cookie present: ${!!auth?.value}, length: ${auth?.value?.length || 0}`);
   if (!auth?.value) return false;
-  return verifySessionToken(auth.value, ADMIN_SECRET);
+  const isValid = verifySessionToken(auth.value, ADMIN_SECRET);
+  console.log(`[SocialAdmin] Token verification result: ${isValid}`);
+  return isValid;
 }
 
 function buildPlatformUrl(platform: string, username: string): string {
