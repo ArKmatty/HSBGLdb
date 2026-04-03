@@ -231,6 +231,8 @@ export async function rejectSubmission(id: string) {
  * @returns Object with success status or error message
  */
 export async function loginAdmin(password: string) {
+  console.log(`[SocialAdmin] loginAdmin called, ADMIN_SECRET set: ${!!ADMIN_SECRET}`);
+
   if (!ADMIN_SECRET) {
     return { success: false, error: "Admin secret not configured." };
   }
@@ -258,6 +260,8 @@ export async function loginAdmin(password: string) {
   loginAttempts.delete(ip);
 
   const token = signSessionToken(ADMIN_SECRET);
+  console.log(`[SocialAdmin] Signing in, token length: ${token.length}, NODE_ENV: ${process.env.NODE_ENV}`);
+
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
@@ -267,6 +271,7 @@ export async function loginAdmin(password: string) {
     path: "/",
   });
 
+  console.log(`[SocialAdmin] Cookie set complete`);
   return { success: true };
 }
 
