@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { cookies, headers } from "next/headers";
 import crypto from "crypto";
 
@@ -182,6 +182,7 @@ export async function approveSubmission(id: string) {
     }
 
     revalidatePath("/admin/socials");
+    revalidateTag("player-socials");
     return { success: true };
   } catch (err) {
     console.error("[SocialAdmin] Unexpected error:", err);
