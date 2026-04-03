@@ -2,7 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export default async function sitemap() {
   // Use explicit production URL — update this to your actual domain
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://hearthstone-leaderboard.vercel.app';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://hsbg-leaderboard.vercel.app';
   const cleanBaseUrl = baseUrl.replace(/\/$/, '');
   
   const regions = ['EU', 'US', 'AP', 'CN'];

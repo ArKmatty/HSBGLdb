@@ -4,7 +4,7 @@ import PatchNotesList from './PatchNotesList';
 import RefreshButton from './RefreshButton';
 
 function getBaseUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL || 'https://hearthstone-leaderboard.vercel.app';
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://hsbg-leaderboard.vercel.app';
 }
 
 export async function generateMetadata(): Promise<Metadata> {
