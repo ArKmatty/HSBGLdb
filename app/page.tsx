@@ -49,7 +49,7 @@ export async function generateMetadata(
     ? 'All Regions' 
     : regions.map(r => regionNames[r] || r).join(' + ');
 
-  const title = `${regionLabel} Hearthstone Battlegrounds Leaderboard${pageLabel}`;
+  const title = `Hearthstone Battlegrounds Leaderboard${isMultiRegion ? '' : ` — ${regionLabel}`}${pageLabel}`;
   const description = isMultiRegion
     ? `Live MMR rankings for top Hearthstone Battlegrounds players across all regions. Track ratings, trends, and Twitch streams for EU, US, AP, and CN players.`
     : `Live MMR rankings for top Hearthstone Battlegrounds players in ${regionLabel}. Track ratings, trends, and Twitch streams for the best BG players.`;
@@ -138,7 +138,7 @@ export default async function Home({ searchParams }: Props) {
             margin: '0 0 4px',
             lineHeight: 1.2,
           }}>
-            {isMultiRegion ? 'All Regions' : displayRegion} Battlegrounds
+            Hearthstone Battlegrounds{isMultiRegion ? '' : ` — ${displayRegion}`}
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, fontWeight: 400 }}>
             {isMultiRegion ? 'Combined rankings across all regions' : t.subtitle}
