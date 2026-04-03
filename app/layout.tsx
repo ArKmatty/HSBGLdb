@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     description: "Live MMR rankings for top Hearthstone Battlegrounds players across all regions.",
     type: "website",
     locale: "en_US",
-    siteName: "HS BG Leaderboard",
+    siteName: "HSBGLdb",
     url: getBaseUrl() || 'https://your-domain.com',
     images: [{ url: "/api/og", width: 1200, height: 630, alt: "HS BG Leaderboard" }],
   },
@@ -68,37 +68,46 @@ export default async function RootLayout({
 }>) {
   const locale = detectLocale(await headers());
   const baseUrl = getBaseUrl() || 'https://your-domain.com';
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'WebApplication',
-    name: 'Hearthstone Battlegrounds Leaderboard',
-    description: 'Live MMR rankings and player stats for Hearthstone Battlegrounds',
-    url: baseUrl,
-    applicationCategory: 'Games',
-    operatingSystem: 'Web Browser',
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'USD',
-    },
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '4.8',
-      reviewCount: '100',
-    },
-    author: {
-      '@type': 'Organization',
-      name: 'HS BG Leaderboard',
-    },
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: {
-        '@type': 'EntryPoint',
-        urlTemplate: `${baseUrl}/player/{search_term_string}`,
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'HSBGLdb',
+      alternateName: ['Hearthstone Battlegrounds Leaderboard', 'HS BG Leaderboard'],
+      url: baseUrl,
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: {
+          '@type': 'EntryPoint',
+          urlTemplate: `${baseUrl}/player/{search_term_string}`,
+        },
+        'query-input': 'required name=search_term_string',
       },
-      'query-input': 'required name=search_term_string',
     },
-  };
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebApplication',
+      name: 'HSBGLdb — Hearthstone Battlegrounds Leaderboard',
+      description: 'Live MMR rankings and player stats for Hearthstone Battlegrounds',
+      url: baseUrl,
+      applicationCategory: 'Games',
+      operatingSystem: 'Web Browser',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+      },
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: '4.8',
+        reviewCount: '100',
+      },
+      author: {
+        '@type': 'Organization',
+        name: 'HSBGLdb',
+      },
+    },
+  ];
 
    return (
      <html lang={locale === 'it' ? 'it' : 'en'} className={`${inter.className} h-full antialiased`}>
