@@ -150,13 +150,16 @@ export async function approveSubmission(id: string) {
     }
 
     const platformCol = submission.platform.toLowerCase();
-    const { error: updateError } = await supabaseAdmin
+    const { error: upsertError } = await supabaseAdmin
       .from("player_socials")
-      .update({ [platformCol]: submission.username })
-      .eq("accountid", submission.player_name);
+      .upsert(
+        { accountid: submission.player_name, [platformCol]: submission.username },
+        { onConflict: "accountid" }
+      );
 
-    if (updateError) {
-      console.error("[SocialAdmin] Update error:", updateError.message);
+    if (upsertError) {
+      console.error("[SocialAdmin] Upsert error:", upsertError.message);
+      return { success: false, error: "Failed to save social link." };
     }
 
     const { error: statusError } = await supabaseAdmin
