@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import * as Sentry from '@sentry/nextjs';
+import { AlertTriangle } from 'lucide-react';
 
 export default function Error({
   error,
@@ -12,6 +14,7 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error('[App Error]', error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (
@@ -30,7 +33,7 @@ export default function Error({
         left: 0,
         right: 0,
         height: 1,
-        background: 'linear-gradient(90deg, transparent, var(--red), transparent)',
+        background: 'var(--gradient-accent-line)',
       }} />
       <div style={{
         maxWidth: 400,
@@ -46,9 +49,9 @@ export default function Error({
           alignItems: 'center',
           justifyContent: 'center',
           margin: '0 auto 20px',
-          fontSize: 24,
+          color: 'var(--red)',
         }}>
-          !
+          <AlertTriangle size={28} />
         </div>
         <h2 style={{
           fontSize: 20,
@@ -77,6 +80,21 @@ export default function Error({
               fontSize: 14,
               fontWeight: 600,
               cursor: 'pointer',
+              transition: 'filter 150ms, transform 150ms',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.filter = 'brightness(1.1)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.filter = 'none';
+              e.currentTarget.style.transform = 'none';
+            }}
+            onMouseDown={e => {
+              e.currentTarget.style.transform = 'scale(0.98)';
+            }}
+            onMouseUp={e => {
+              e.currentTarget.style.transform = 'translateY(-1px)';
             }}
           >
             Try again

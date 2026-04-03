@@ -72,7 +72,8 @@ export default function AchievementBadges({ currentRank, gamesPlayed, gain7d }: 
         {achievements.map(a => (
           <div
             key={a.id}
-            title={a.hint}
+            role="img"
+            aria-label={`${a.label}: ${a.unlocked ? 'Unlocked' : 'Locked'} - ${a.hint}`}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -85,8 +86,19 @@ export default function AchievementBadges({ currentRank, gamesPlayed, gain7d }: 
               fontSize: 11,
               fontWeight: 600,
               opacity: a.unlocked ? 1 : 0.5,
-              transition: 'all 150ms',
+              transition: 'opacity 150ms, transform 150ms, box-shadow 150ms',
               cursor: 'default',
+              boxShadow: a.unlocked ? `0 0 8px ${a.color}20` : 'none',
+            }}
+            onMouseEnter={e => {
+              if (a.unlocked) {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = `0 2px 12px ${a.color}30`;
+              }
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = a.unlocked ? `0 0 8px ${a.color}20` : 'none';
             }}
           >
             {a.icon}

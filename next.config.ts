@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Optimize package imports for better tree-shaking
+  experimental: {
+    optimizePackageImports: ['recharts', 'lucide-react'],
+  },
   async headers() {
     return [
       {

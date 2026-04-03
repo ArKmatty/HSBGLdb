@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TrendingUp, TrendingDown, Minus, Tv, ChevronUp, ChevronDown, Crown } from "lucide-react";
@@ -27,12 +27,45 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale,
   const t = translations[locale];
 
   useEffect(() => {
+    const REFRESH_COOLDOWN_MS = 60_000; // 1 minute cooldown between refreshes
+    let lastRefreshTime = 0;
+    
     const handler = () => {
-      if (!document.hidden) router.refresh();
+      if (!document.hidden) {
+        const now = Date.now();
+        const timeSinceLastRefresh = now - lastRefreshTime;
+        
+        // Only refresh if cooldown period has passed
+        if (timeSinceLastRefresh >= REFRESH_COOLDOWN_MS) {
+          router.refresh();
+          lastRefreshTime = now;
+        }
+      }
     };
+    
     document.addEventListener('visibilitychange', handler);
     return () => document.removeEventListener('visibilitychange', handler);
   }, [router]);
+
+  const getDelta = useCallback((p: Player) => p.lastRating ? p.rating - p.lastRating : 0, []);
+
+  const filtered = useMemo(() => 
+    players.filter(p =>
+      p.accountid.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+    [players, searchTerm]
+  );
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === 'rank') cmp = a.rank - b.rank;
+      else if (sortKey === 'name') cmp = a.accountid.localeCompare(b.accountid);
+      else if (sortKey === 'mmr') cmp = a.rating - b.rating;
+      else if (sortKey === 'delta') cmp = getDelta(a) - getDelta(b);
+      return sortDir === 'desc' ? -cmp : cmp;
+    });
+  }, [filtered, sortKey, sortDir, getDelta]);
 
   if (!players || players.length === 0) {
     return (
@@ -43,10 +76,6 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale,
       />
     );
   }
-
-  const filtered = players.filter(p =>
-    p.accountid.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   if (filtered.length === 0 && searchTerm) {
     return (
@@ -66,17 +95,6 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale,
       setSortDir(key === 'rank' ? 'asc' : 'asc');
     }
   };
-
-  const getDelta = (p: Player) => p.lastRating ? p.rating - p.lastRating : 0;
-
-  const sorted = [...filtered].sort((a, b) => {
-    let cmp = 0;
-    if (sortKey === 'rank') cmp = a.rank - b.rank;
-    else if (sortKey === 'name') cmp = a.accountid.localeCompare(b.accountid);
-    else if (sortKey === 'mmr') cmp = a.rating - b.rating;
-    else if (sortKey === 'delta') cmp = getDelta(a) - getDelta(b);
-    return sortDir === 'desc' ? -cmp : cmp;
-  });
 
   const SortIcon = ({ column }: { column: SortKey }) => {
     if (sortKey !== column) return null;
@@ -192,7 +210,7 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale,
                     className="leaderboard-row"
                     style={{
                       borderTop: idx === 0 ? 'none' : '1px solid var(--border-dim)',
-                      background: isTop3 ? 'rgba(232,168,56,0.02)' : 'transparent',
+                      background: isTop3 ? 'rgba(232,168,56,0.05)' : 'transparent',
                     }}
                   >
                     {/* Rank */}

@@ -7,10 +7,21 @@ import { getPlayerLiveStats } from '@/lib/blizzard';
  * @param name - The player's account ID (battle tag)
  * @param region - Optional region filter (EU, US, AP, CN)
  * @param limit - Maximum number of records to return (default: 100)
+ * @param timeRange - Optional time range to optimize limit ('24h', '7d', '30d', 'all')
  * @returns Object with success status and history array, or error message
  */
-export async function getPlayerHistory(name: string, region?: string, limit = 100) {
+export async function getPlayerHistory(name: string, region?: string, limit = 100, timeRange?: string) {
   const start = Date.now();
+  
+  // Dynamic limit based on time range to avoid over-fetching
+  const limitsByRange: Record<string, number> = {
+    '24h': 30,   // ~1 record per hour
+    '7d': 100,   // ~14 records per day
+    '30d': 200,  // ~7 records per day
+    'all': 500,  // Full history
+  };
+  const actualLimit = timeRange ? (limitsByRange[timeRange] || limit) : limit;
+  
   try {
     let query = supabaseAdmin
       .from('leaderboard_history')
@@ -21,13 +32,13 @@ export async function getPlayerHistory(name: string, region?: string, limit = 10
       query = query.eq('region', region);
     }
 
-    query = query.order('created_at', { ascending: true }).limit(limit);
+    query = query.order('created_at', { ascending: true }).limit(actualLimit);
 
     const { data: history, error: hError } = await query;
 
     if (hError) throw hError;
 
-    console.log(`[Perf] History for ${name}${region ? ` (${region})` : ''} fetched in ${Date.now() - start}ms`);
+    console.log(`[Perf] History for ${name}${region ? ` (${region})` : ''} [${timeRange || 'default'}] fetched ${history?.length || 0} rows in ${Date.now() - start}ms`);
     return { success: true, history: history || [] };
   } catch (error) {
     console.error("History Action Error:", error);
@@ -44,12 +55,13 @@ export async function getPlayerHistory(name: string, region?: string, limit = 10
 export async function searchPlayers(query: string) {
   if (!query || query.length < 2) return [];
   try {
+    // Fetch only what we need - 20 gives us room to deduplicate and return 10 unique
     const { data, error } = await supabaseAdmin
       .from('leaderboard_history')
       .select('accountId')
       .ilike('accountId', `%${query}%`)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(20);
 
     if (error) return [];
 

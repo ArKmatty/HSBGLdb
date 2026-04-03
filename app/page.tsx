@@ -2,7 +2,7 @@ import type { Metadata, ResolvingMetadata } from 'next';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { getLeaderboard, getMultiRegionLeaderboard } from '../lib/blizzard';
-import { getTopMovers, getTopFallers } from '../lib/stats';
+import { getMoversAndFallers } from '../lib/stats';
 import LeaderboardTable from '../components/LeaderboardTable';
 import TopMoversWidget from '../components/TopMoversWidget';
 import RecentSearches from '../components/RecentSearches';
@@ -98,13 +98,16 @@ export default async function Home({ searchParams }: Props) {
   const locale = detectLocale(await headers());
   const t = translations[locale];
 
-  const [players, topMovers, topFallers] = await Promise.all([
-    isMultiRegion 
+  const region = regions[0] === 'ALL' ? 'EU' : regions[0];
+  
+  const [players, moversAndFallers] = await Promise.all([
+    isMultiRegion
       ? getMultiRegionLeaderboard(regions.filter(r => r !== 'ALL'), currentPage)
       : getLeaderboard(regions[0], currentPage),
-    getTopMovers(regions[0] === 'ALL' ? 'EU' : regions[0]),
-    getTopFallers(regions[0] === 'ALL' ? 'EU' : regions[0]),
+    getMoversAndFallers(region),
   ]);
+
+  const { movers: topMovers, fallers: topFallers } = moversAndFallers;
 
   const playerIds = players.map(p => p.accountid);
   const twitchStatuses = await getTwitchStatusesForLeaderboard(playerIds);
@@ -124,9 +127,9 @@ export default async function Home({ searchParams }: Props) {
       </div>
 
       {/* ── Content ── */}
-      <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 20px 64px' }}>
+      <div style={{ maxWidth: 880, margin: '0 auto', padding: '32px 20px 64px' }}>
         {/* Page title */}
-        <div style={{ marginBottom: 20 }} className="animate-fade-in">
+        <div style={{ marginBottom: 24 }} className="animate-fade-in">
           <h1 style={{
             fontSize: 'clamp(22px, 4vw, 32px)',
             fontWeight: 800,

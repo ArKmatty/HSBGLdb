@@ -59,13 +59,20 @@ export default function DataFreshness({ lastUpdated }: { lastUpdated: number }) 
         <span>{secondsAgo < 5 ? 'Just now' : formatTime(secondsAgo)}</span>
       </div>
 
-      <div style={{
-        width: 60,
-        height: 3,
-        borderRadius: 2,
-        background: 'var(--bg-subtle)',
-        overflow: 'hidden',
-      }}>
+      <div
+        role="progressbar"
+        aria-valuenow={Math.round(progress)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Auto-refresh progress: ${Math.round(progress)}%`}
+        style={{
+          width: 60,
+          height: 3,
+          borderRadius: 2,
+          background: 'var(--bg-subtle)',
+          overflow: 'hidden',
+        }}
+      >
         <div style={{
           width: `${progress}%`,
           height: '100%',

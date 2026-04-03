@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { GitCompare, X, Search, Loader2 } from 'lucide-react';
 import { searchPlayers } from '@/app/actions/player';
 import { useFocusTrap } from '@/lib/useFocusTrap';
+import { useDebouncedSearch } from '@/lib/useDebouncedSearch';
 
 export default function PlayerCompare({ currentName }: { currentName: string }) {
   const router = useRouter();
@@ -14,9 +15,10 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
   const [searching, setSearching] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const trapRef = useFocusTrap(open);
+  const { debouncedSearch, cancelDebounce } = useDebouncedSearch(200);
 
   useEffect(() => {
     if (open && inputRef.current) {
@@ -27,12 +29,14 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
   const handleSearch = useCallback(async (query: string) => {
     if (query.length < 2) {
       setSuggestions([]);
+      setActiveSuggestionIndex(-1);
       return;
     }
     setSearching(true);
     try {
       const results = await searchPlayers(query);
       setSuggestions(results.filter(n => n.toLowerCase() !== currentName.toLowerCase()));
+      setActiveSuggestionIndex(-1);
     } catch {
       setSuggestions([]);
     } finally {
@@ -43,9 +47,10 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
   const handleChange = useCallback((value: string) => {
     setCompareName(value);
     setError(null);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => handleSearch(value), 200);
-  }, [handleSearch]);
+    debouncedSearch(async () => {
+      await handleSearch(value);
+    });
+  }, [handleSearch, debouncedSearch]);
 
   const handleCompare = useCallback(async (name?: string) => {
     const target = name || compareName.trim();
@@ -65,8 +70,8 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
     setCompareName('');
     setSuggestions([]);
     setError(null);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-  }, []);
+    cancelDebounce();
+  }, [cancelDebounce]);
 
   if (!open) {
     return (
@@ -177,8 +182,30 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
               type="text"
               value={compareName}
               onChange={e => handleChange(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleCompare(); }}
+              onKeyDown={e => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setActiveSuggestionIndex(prev => 
+                    prev < suggestions.length - 1 ? prev + 1 : prev
+                  );
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setActiveSuggestionIndex(prev => prev > 0 ? prev - 1 : -1);
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (activeSuggestionIndex >= 0 && activeSuggestionIndex < suggestions.length) {
+                    handleSelectSuggestion(suggestions[activeSuggestionIndex]);
+                  } else {
+                    handleCompare();
+                  }
+                }
+              }}
               placeholder="Enter player name..."
+              role="combobox"
+              aria-expanded={suggestions.length > 0}
+              aria-controls="compare-suggestions-listbox"
+              aria-haspopup="listbox"
+              aria-activedescendant={activeSuggestionIndex >= 0 ? `compare-suggestion-${activeSuggestionIndex}` : undefined}
               style={{
                 flex: 1,
                 background: 'transparent',
@@ -196,13 +223,18 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
 
         {/* Suggestions dropdown */}
         {(suggestions.length > 0 || searching) && compareName.length >= 2 && (
-          <div style={{
-            marginBottom: 16,
-            maxHeight: 200,
-            overflowY: 'auto',
-            borderRadius: 8,
-            border: '1px solid var(--border-dim)',
-          }}>
+          <div
+            id="compare-suggestions-listbox"
+            role="listbox"
+            aria-label="Player suggestions"
+            style={{
+              marginBottom: 16,
+              maxHeight: 200,
+              overflowY: 'auto',
+              borderRadius: 8,
+              border: '1px solid var(--border-dim)',
+            }}
+          >
             {searching ? (
               <div style={{
                 padding: '10px 12px',
@@ -216,14 +248,17 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
                 Searching...
               </div>
             ) : (
-              suggestions.map(name => (
+              suggestions.map((name, idx) => (
                 <button
                   key={name}
+                  id={`compare-suggestion-${idx}`}
+                  role="option"
+                  aria-selected={idx === activeSuggestionIndex}
                   onClick={() => handleSelectSuggestion(name)}
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    background: 'transparent',
+                    background: idx === activeSuggestionIndex ? 'var(--bg-elevated)' : 'transparent',
                     border: 'none',
                     borderBottom: '1px solid var(--border-dim)',
                     color: 'var(--text-secondary)',

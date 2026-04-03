@@ -7,6 +7,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { searchPlayers } from '@/app/actions/player';
 import { EmptyState } from './EmptyState';
 import { useFocusTrap } from '@/lib/useFocusTrap';
+import { useDebouncedSearch } from '@/lib/useDebouncedSearch';
 
 const REGIONS = ['EU', 'US', 'AP', 'CN'] as const;
 
@@ -21,9 +22,10 @@ export default function SiteNav() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [searching, setSearching] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const trapRef = useFocusTrap(searchOpen);
+  const { debouncedSearch, cancelDebounce } = useDebouncedSearch(200);
 
   useEffect(() => {
     if (searchOpen && inputRef.current) {
@@ -62,12 +64,14 @@ export default function SiteNav() {
   const handleSearch = useCallback(async (q: string) => {
     if (q.length < 2) {
       setSuggestions([]);
+      setActiveSuggestionIndex(-1);
       return;
     }
     setSearching(true);
     try {
       const results = await searchPlayers(q);
       setSuggestions(results.slice(0, 5));
+      setActiveSuggestionIndex(-1);
     } catch {
       setSuggestions([]);
     } finally {
@@ -77,9 +81,10 @@ export default function SiteNav() {
 
   const handleChange = useCallback((value: string) => {
     setQuery(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => handleSearch(value), 200);
-  }, [handleSearch]);
+    debouncedSearch(async () => {
+      await handleSearch(value);
+    });
+  }, [handleSearch, debouncedSearch]);
 
   return (
     <>
@@ -91,6 +96,7 @@ export default function SiteNav() {
           background: 'var(--bg-surface)',
           borderBottom: '1px solid var(--border-dim)',
           backdropFilter: 'blur(8px)',
+          transition: 'background-color 300ms ease',
         }}
       >
         <div
@@ -101,7 +107,7 @@ export default function SiteNav() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            height: 48,
+            height: 56,
           }}
         >
             <Link
@@ -113,11 +119,11 @@ export default function SiteNav() {
                 flexShrink: 0,
               }}
             >
-              <Image src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={24} height={24} style={{ objectFit: 'contain', background: 'white', borderRadius: 4 }} />
-              <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.02em' }}>HSBGLdb</span>
+              <Image src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={28} height={28} style={{ objectFit: 'contain', background: 'var(--bg-surface)', borderRadius: 6 }} />
+              <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.02em' }}>HSBGLdb</span>
             </Link>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {/* Region tabs */}
             <div style={{ display: 'flex', background: 'var(--bg-base)', borderRadius: 6, padding: 2 }}>
               {REGIONS.map(r => (
@@ -265,6 +271,7 @@ export default function SiteNav() {
               setSearchOpen(false);
               setQuery('');
               setSuggestions([]);
+              cancelDebounce();
             }
           }}
           onKeyDown={e => {
@@ -272,6 +279,7 @@ export default function SiteNav() {
               setSearchOpen(false);
               setQuery('');
               setSuggestions([]);
+              cancelDebounce();
             }
           }}
         >
@@ -315,11 +323,28 @@ export default function SiteNav() {
                 value={query}
                 onChange={e => handleChange(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter' && suggestions.length > 0) {
-                    window.location.href = `/player/${encodeURIComponent(suggestions[0])}`;
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setActiveSuggestionIndex(prev => 
+                      prev < suggestions.length - 1 ? prev + 1 : prev
+                    );
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setActiveSuggestionIndex(prev => prev > 0 ? prev - 1 : -1);
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const selectedIndex = activeSuggestionIndex >= 0 ? activeSuggestionIndex : 0;
+                    if (suggestions.length > 0 && selectedIndex < suggestions.length) {
+                      window.location.href = `/player/${encodeURIComponent(suggestions[selectedIndex])}`;
+                    }
                   }
                 }}
                 placeholder="Enter player name..."
+                role="combobox"
+                aria-expanded={suggestions.length > 0}
+                aria-controls="suggestions-listbox"
+                aria-haspopup="listbox"
+                aria-activedescendant={activeSuggestionIndex >= 0 ? `suggestion-${activeSuggestionIndex}` : undefined}
                 style={{
                   flex: 1,
                   background: 'transparent',
@@ -335,6 +360,9 @@ export default function SiteNav() {
 
             {(suggestions.length > 0 || searching) && query.length >= 2 && (
               <div
+                id="suggestions-listbox"
+                role="listbox"
+                aria-label="Search suggestions"
                 style={{
                   marginTop: 8,
                   maxHeight: 240,
@@ -348,19 +376,23 @@ export default function SiteNav() {
                     Searching...
                   </div>
                 ) : (
-                  suggestions.map(name => (
+                  suggestions.map((name, idx) => (
                     <Link
                       key={name}
+                      id={`suggestion-${idx}`}
+                      role="option"
+                      aria-selected={idx === activeSuggestionIndex}
                       href={`/player/${encodeURIComponent(name)}`}
                       onClick={() => {
                         setSearchOpen(false);
                         setQuery('');
                         setSuggestions([]);
+                        cancelDebounce();
                       }}
                       style={{
                         display: 'block',
                         padding: '10px 12px',
-                        background: 'transparent',
+                        background: idx === activeSuggestionIndex ? 'var(--bg-elevated)' : 'transparent',
                         borderBottom: '1px solid var(--border-dim)',
                         color: 'var(--text-secondary)',
                         fontSize: 14,

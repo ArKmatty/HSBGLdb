@@ -1,7 +1,7 @@
 import { supabaseAdmin } from './supabase';
 import { ingestLeaderboardSnapshot } from './ingest';
 import { unstable_cache } from 'next/cache';
-import type { BlizzardLeaderboardRow, BlizzardLeaderboardData, BlizzardPlayerLive, CnLeaderboardResponse } from './types';
+import type { BlizzardLeaderboardRow, BlizzardLeaderboardData, BlizzardPlayerLive, CnLeaderboardResponse, LeaderboardHistoryRecord } from './types';
 
 const REVALIDATE_SECONDS = 60;
 const CACHE_LEADERBOARD_SECONDS = 60;
@@ -9,43 +9,47 @@ const CACHE_PLAYER_LIVE_SECONDS = 120;
 const CN_API_BASE = 'https://webapi.blizzard.cn/hs-rank-api-server/api';
 const CN_SEASON_ID = parseInt(process.env.CN_SEASON_ID || '17', 10);
 
+// Cache durations (in seconds)
+// - Leaderboard: 60s (frequent updates expected)
+// - Player live stats: 120s (moderate freshness acceptable)
+// - Top movers/fallers: 1800s (30min, computed stats change slowly)
+
 function isValidLeaderboardPage(data: unknown): data is BlizzardLeaderboardData {
   return typeof data === 'object' && data !== null;
 }
 
-async function getCnLeaderboard(page: number): Promise<BlizzardLeaderboardRow[]> {
-  const pageSize = 10;
-  const startPage = ((page - 1) * pageSize) + 1;
-
-  const requests = Array.from({ length: pageSize }, (_, i) => {
-    const apiPage = startPage + i;
-    return fetch(
-      `${CN_API_BASE}/game/ranks?mode_name=battlegrounds&season_id=${CN_SEASON_ID}&page=${apiPage}&page_size=25`,
-      { next: { revalidate: REVALIDATE_SECONDS } }
-    )
-      .then(async res => {
-        if (!res.ok) {
-          console.error(`[Blizzard CN] API error: ${res.status} for page ${apiPage}`);
-          return { code: 0, message: '', data: { list: [], total: 0 } };
-        }
-        return res.json() as Promise<CnLeaderboardResponse>;
-      })
-      .catch(err => {
-        console.error(`[Blizzard CN] Fetch error for page ${apiPage}:`, err);
-        return { code: 0, message: '', data: { list: [], total: 0 } };
-      });
-  });
-
-  const results = await Promise.all(requests);
-  const players: BlizzardLeaderboardRow[] = results
-    .flatMap(r => r.data?.list || [])
-    .map((item) => ({
-      rank: item.position,
-      accountid: item.battle_tag,
-      rating: item.score,
-    }));
-
-  return players;
+/**
+ * Fetch with exponential backoff retry
+ * @param url - URL to fetch
+ * @param options - Fetch options
+ * @param maxRetries - Maximum number of retry attempts
+ * @param label - Label for logging
+ * @param baseDelay - Base delay in ms (default: 300ms)
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries: number = 3,
+  label: string = 'fetch',
+  baseDelay: number = 300
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      return response;
+    } catch (error) {
+      lastError = error as Error;
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.warn(`[${label}] Retry ${attempt + 1}/${maxRetries} after ${delay}ms:`, error);
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError || new Error(`[${label}] Failed after ${maxRetries} attempts`);
 }
 
 export const getLeaderboard = unstable_cache(
@@ -147,21 +151,21 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
         ...player,
         rank: idx + 1,
       }));
-    
-    // Paginate
-    const pageSize = 10;
+
+    // Paginate - show 100 players per page (matching non-CN regions)
+    const pageSize = 100;
     const startIdx = (page - 1) * pageSize;
     const paginatedPlayers = currentPlayers.slice(startIdx, startIdx + pageSize);
-    
+
     console.log(`[Blizzard CN] Fetched ${currentPlayers.length} unique players, showing page ${page} (${paginatedPlayers.length} players)`);
-    
+
     if (paginatedPlayers.length === 0) return [];
 
     const playerNames = paginatedPlayers.map(p => p.accountid);
 
     // Retry snapshot query up to 3 times on failure
-    let snapshots: any[] = [];
-    let snapError: any = null;
+    let snapshots: Pick<LeaderboardHistoryRecord, 'accountId' | 'rating' | 'created_at' | 'region'>[] = [];
+    let snapError: Error | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const result = await supabaseAdmin
@@ -185,22 +189,15 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
       console.error(`[Blizzard CN] Snapshot query error after retries:`, snapError.message);
     }
     console.log(`[Blizzard CN] Found ${snapshots?.length || 0} historical snapshots for ${playerNames.length} players`);
-    
+
     // Get the OLDEST snapshot per player for trend calculation (within last 24h)
+    // This matches the behavior of non-CN regions for consistency
     const oldestSnapshotMap = new Map<string, number>();
     for (const s of snapshots || []) {
       const key = s.accountId.toLowerCase();
       if (!oldestSnapshotMap.has(key)) {
         oldestSnapshotMap.set(key, s.rating);
       }
-    }
-
-    // Debug: log jeef's trend calculation
-    const jeefPlayer = paginatedPlayers.find(p => p.accountid.toLowerCase() === 'jeef');
-    if (jeefPlayer) {
-      const jeefSnapshotRating = oldestSnapshotMap.get('jeef');
-      const trend = jeefSnapshotRating ? jeefPlayer.rating - jeefSnapshotRating : 0;
-      console.log(`[Blizzard CN] jeef: current=${jeefPlayer.rating}, oldestSnapshot=${jeefSnapshotRating}, trend=${trend}`);
     }
 
     return paginatedPlayers.map(player => {
@@ -215,9 +212,11 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
 
   const requests = Array.from({ length: pageSize }, (_, i) => {
     const apiPage = startPage + i;
-    return fetch(
+    return fetchWithRetry(
       `https://hearthstone.blizzard.com/en-us/api/community/leaderboardsData?region=${region}&leaderboardId=battlegrounds&page=${apiPage}`,
-      { next: { revalidate: REVALIDATE_SECONDS } }
+      { next: { revalidate: REVALIDATE_SECONDS } },
+      3, // 3 retry attempts
+      `[Blizzard ${region}] page ${apiPage}`
     )
       .then(res => {
         if (!res.ok) {
@@ -306,13 +305,14 @@ export const getPlayerLiveStats = unstable_cache(
       try {
         // CN uses a different API
         if (region === 'CN') {
-          const cnPageSize = 10;
           const cnPagesToScan = preferredRegion === 'CN' ? PREFERRED_PAGES : OTHER_PAGES;
-          
+
           const cnRequests = Array.from({ length: cnPagesToScan }, (_, i) =>
-            fetch(
+            fetchWithRetry(
               `${CN_API_BASE}/game/ranks?mode_name=battlegrounds&season_id=${CN_SEASON_ID}&page=${i + 1}&page_size=25`,
-              { next: { revalidate: REVALIDATE_SECONDS } }
+              { next: { revalidate: REVALIDATE_SECONDS } },
+              2, // 2 retry attempts for player search
+              `[Blizzard CN player search] page ${i + 1}`
             )
               .then(res => {
                 if (!res.ok) return { code: 0, message: '', data: { list: [], total: 0 } };
@@ -339,9 +339,11 @@ export const getPlayerLiveStats = unstable_cache(
         // EU, US, AP use standard Blizzard API
         const pagesToScan = region === preferredRegion ? PREFERRED_PAGES : OTHER_PAGES;
         const pageRequests = Array.from({ length: pagesToScan }, (_, i) =>
-          fetch(
+          fetchWithRetry(
             `https://hearthstone.blizzard.com/en-us/api/community/leaderboardsData?region=${region}&leaderboardId=battlegrounds&page=${i + 1}`,
-            { next: { revalidate: REVALIDATE_SECONDS } }
+            { next: { revalidate: REVALIDATE_SECONDS } },
+            2, // 2 retry attempts for player search
+            `[Blizzard ${region} player search] page ${i + 1}`
           )
             .then(res => {
               if (!res.ok) return { leaderboard: { rows: [] } };

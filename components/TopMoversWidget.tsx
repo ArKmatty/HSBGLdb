@@ -47,15 +47,25 @@ export default function TopMoversWidget({ players, fallers, locale, region }: { 
               padding: '12px 14px',
               minWidth: 140,
               maxWidth: 140,
-              background: 'var(--bg-surface)',
+              background: 'var(--gradient-card)',
               border: '1px solid var(--border-dim)',
+              borderLeft: `3px solid ${idx === 0 ? 'var(--green)' : 'transparent'}`,
               borderRadius: 8,
               cursor: 'pointer',
-              transition: 'border-color 150ms',
+              transition: 'border-color 150ms, box-shadow 150ms, transform 150ms',
+              boxShadow: 'var(--shadow-sm)',
               flexShrink: 0,
             }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-mid)')}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-dim)')}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = 'var(--border-mid)';
+              e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = 'var(--border-dim)';
+              e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{
@@ -116,15 +126,25 @@ export default function TopMoversWidget({ players, fallers, locale, region }: { 
                   padding: '12px 14px',
                   minWidth: 140,
                   maxWidth: 140,
-                  background: 'var(--bg-surface)',
+                  background: 'var(--gradient-card)',
                   border: '1px solid var(--border-dim)',
+                  borderLeft: `3px solid ${idx === 0 ? 'var(--red)' : 'transparent'}`,
                   borderRadius: 8,
                   cursor: 'pointer',
-                  transition: 'border-color 150ms',
+                  transition: 'border-color 150ms, box-shadow 150ms, transform 150ms',
+                  boxShadow: 'var(--shadow-sm)',
                   flexShrink: 0,
                 }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-mid)')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-dim)')}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = 'var(--border-mid)';
+                  e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = 'var(--border-dim)';
+                  e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{

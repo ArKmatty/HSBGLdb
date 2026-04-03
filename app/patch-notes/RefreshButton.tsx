@@ -51,7 +51,7 @@ export default function RefreshButton() {
           fontWeight: 500,
           cursor: refreshing ? 'not-allowed' : 'pointer',
           opacity: refreshing ? 0.7 : 1,
-          transition: 'all 150ms',
+          transition: 'border-color 150ms, background-color 150ms, color 150ms, opacity 150ms',
         }}
         onMouseEnter={e => {
           if (!refreshing) {
@@ -62,7 +62,7 @@ export default function RefreshButton() {
           e.currentTarget.style.borderColor = 'var(--border-mid)';
         }}
       >
-        <RefreshCw size={14} style={refreshing ? { animation: 'spin 1s linear infinite' } : {}} />
+        <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
         {refreshing ? 'Refreshing...' : 'Refresh'}
       </button>
       {message && (

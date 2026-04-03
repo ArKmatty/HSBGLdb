@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 
 const REGIONS = ['EU', 'US', 'AP', 'CN'];
-const PAGES_TO_FETCH = 4;
+const PAGES_TO_FETCH = 20; // 20 pages × 25 players = 500 players per region
 const CN_API_BASE = 'https://webapi.blizzard.cn/hs-rank-api-server/api';
 const CN_SEASON_ID = parseInt(process.env.CN_SEASON_ID || '17', 10);
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 500;
 
 interface CnLeaderboardResponse {
   code: number;
@@ -19,11 +21,36 @@ interface CnLeaderboardResponse {
   };
 }
 
+/**
+ * Fetch with exponential backoff retry for cron job reliability
+ */
+async function fetchWithRetry(url: string, options: RequestInit, label: string, maxRetries = MAX_RETRIES): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      return response;
+    } catch (error) {
+      lastError = error as Error;
+      const delay = RETRY_DELAY_MS * Math.pow(2, attempt);
+      console.warn(`[${label}] Retry ${attempt + 1}/${maxRetries} after ${delay}ms`);
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  console.error(`[${label}] Failed after ${maxRetries} attempts:`, lastError);
+  return { ok: false, status: 0 } as Response;
+}
+
 async function fetchCnLeaderboard(page: number): Promise<Array<{ accountid: string; rating: number; rank: number }>> {
   const apiPage = ((page - 1) * 25) + 1;
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `${CN_API_BASE}/game/ranks?mode_name=battlegrounds&season_id=${CN_SEASON_ID}&page=${apiPage}&page_size=25`,
-    { cache: 'no-store' }
+    { cache: 'no-store' },
+    `CN Sync page ${apiPage}`
   );
 
   if (!res.ok) {
@@ -59,9 +86,14 @@ export async function GET(request: Request) {
       } else {
         const pageRequests = Array.from({ length: PAGES_TO_FETCH }, (_, i) => {
           const page = i + 1;
-          return fetch(`https://hearthstone.blizzard.com/en-us/api/community/leaderboardsData?region=${region}&leaderboardId=battlegrounds&page=${page}`, {
-            cache: 'no-store'
-          }).then(res => res.json());
+          return fetchWithRetry(
+            `https://hearthstone.blizzard.com/en-us/api/community/leaderboardsData?region=${region}&leaderboardId=battlegrounds&page=${page}`,
+            { cache: 'no-store' },
+            `${region} Sync page ${page}`
+          ).then(res => {
+            if (!res.ok) return { leaderboard: { rows: [] } };
+            return res.json();
+          });
         });
 
         const results = await Promise.all(pageRequests);

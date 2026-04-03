@@ -30,7 +30,7 @@ export default function WatchlistButton({ playerName }: { playerName: string }) 
         alignItems: "center",
         justifyContent: "center",
         color: isWatched ? "var(--accent)" : "var(--text-muted)",
-        transition: "all 150ms",
+        transition: "transform 150ms, color 150ms",
         transform: isAnimating ? "scale(1.2)" : "scale(1)",
       }}
       onMouseEnter={(e) => {
@@ -40,7 +40,7 @@ export default function WatchlistButton({ playerName }: { playerName: string }) 
         e.currentTarget.style.color = isWatched ? "var(--accent)" : "var(--text-muted)";
       }}
     >
-      <Heart size={18} fill={isWatched ? "var(--accent)" : "none"} />
+      <Heart size={18} fill={isWatched ? "var(--accent)" : "none"} aria-hidden="true" />
     </button>
   );
 }

@@ -164,14 +164,17 @@ export default function SocialLinksForm({ playerName }: { playerName: string }) 
             ) : (
               <form onSubmit={handleSubmit}>
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                  <label htmlFor="platform-select" style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
                     Platform
                   </label>
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div role="radiogroup" aria-label="Platform selection" style={{ display: "flex", gap: 6 }}>
                     {PLATFORMS.map(p => (
                       <button
                         key={p.key}
                         type="button"
+                        role="radio"
+                        aria-checked={platform === p.key}
+                        id={`platform-${p.key}`}
                         onClick={() => setPlatform(p.key)}
                         style={{
                           flex: 1,
@@ -183,7 +186,7 @@ export default function SocialLinksForm({ playerName }: { playerName: string }) 
                           fontSize: 11,
                           fontWeight: 600,
                           cursor: "pointer",
-                          transition: "all 150ms",
+                          transition: "border-color 150ms, background-color 150ms, color 150ms",
                         }}
                       >
                         {p.label}
@@ -193,7 +196,7 @@ export default function SocialLinksForm({ playerName }: { playerName: string }) 
                 </div>
 
                 <div style={{ marginBottom: 20 }}>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                  <label htmlFor="username-input" style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
                     Username
                   </label>
                   <div style={{
@@ -216,6 +219,7 @@ export default function SocialLinksForm({ playerName }: { playerName: string }) 
                       </span>
                     )}
                     <input
+                      id="username-input"
                       type="text"
                       value={username}
                       onChange={e => setUsername(e.target.value)}

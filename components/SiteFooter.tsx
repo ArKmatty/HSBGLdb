@@ -6,8 +6,8 @@ export default function SiteFooter() {
     <footer
       style={{
         borderTop: '1px solid var(--border-dim)',
-        background: 'var(--bg-surface)',
-        padding: '24px 20px',
+        background: 'var(--gradient-card)',
+        padding: '32px 20px',
         marginTop: 'auto',
       }}
     >
@@ -23,8 +23,8 @@ export default function SiteFooter() {
          }}
        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-             <Image src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={20} height={20} style={{ objectFit: 'contain', background: 'white', borderRadius: 4 }} />
-            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+             <Image src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={20} height={20} style={{ objectFit: 'contain', background: 'var(--bg-surface)', borderRadius: 4 }} />
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
               Data from Blizzard Entertainment API. Not affiliated with or endorsed by Blizzard Entertainment.
             </span>
           </div>

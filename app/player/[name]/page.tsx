@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { ChevronLeft, TrendingUp, Trophy, Activity, Swords, Globe, AlertCircle, Loader2, Award, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { getPlayerHistory, getPlayerLive } from '@/app/actions/player';
@@ -9,12 +9,18 @@ import { getTwitchStatusForPlayer } from '@/app/actions/twitch';
 import { detectLocaleClient, translations } from '@/lib/i18n';
 import { computeStats, bucketizeHistory } from '@/lib/stats';
 import ScrollToTop from '@/components/ScrollToTop';
-import SocialLinksForm from '@/components/SocialLinksForm';
-import PlayerCompare from '@/components/PlayerCompare';
-import AchievementBadges from '@/components/AchievementBadges';
-import WatchlistButton from '@/components/WatchlistButton';
-import CopyButton from '@/components/CopyButton';
 import { ChartSkeleton } from '@/components/Skeleton';
+
+// Lazy-load heavy components to reduce initial bundle size
+const MMRChart = dynamic(() => import('./MMRChart'), { 
+  ssr: false, 
+  loading: () => <ChartSkeleton /> 
+});
+const SocialLinksForm = dynamic(() => import('@/components/SocialLinksForm'));
+const PlayerCompare = dynamic(() => import('@/components/PlayerCompare'));
+const AchievementBadges = dynamic(() => import('@/components/AchievementBadges'));
+const WatchlistButton = dynamic(() => import('@/components/WatchlistButton'));
+const CopyButton = dynamic(() => import('@/components/CopyButton'));
 
 type TimeRange = '24h' | '7d' | '30d' | 'all';
 
@@ -157,9 +163,10 @@ export default function PlayerPage() {
       }
       setLoadingLive(false);
 
-      // Step 2: Fetch history with the determined region
+      // Step 2: Fetch history with the determined region and time range
       // This ensures we only get history for the correct region, avoiding cross-region data pollution
-      const hResult = await getPlayerHistory(decodedName, playerRegion, 100).catch((err) => {
+      // Pass timeRange to optimize the query limit
+      const hResult = await getPlayerHistory(decodedName, playerRegion, 100, timeRange).catch((err) => {
         console.error("History fetch error:", err);
         return { success: false, history: [], error: 'Database error' };
       });
@@ -475,12 +482,22 @@ export default function PlayerPage() {
               key={item.title}
               style={{
                 padding: '14px 16px',
-                background: 'var(--bg-surface)',
+                background: 'var(--gradient-card)',
                 border: '1px solid var(--border-dim)',
                 borderRadius: 8,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'box-shadow 150ms, transform 150ms',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
               <div style={{
@@ -557,66 +574,15 @@ export default function PlayerPage() {
             </div>
           </div>
 
-          <div style={{ height: 'clamp(250px, 45vw, 400px)' }} role="img" aria-label={`Line chart showing MMR progression from ${chartData[0]?.date || 'start'} to ${chartData[chartData.length - 1]?.date || 'end'}`}>
+          <div style={{ height: 'clamp(250px, 45vw, 400px)' }} role="img" aria-label={`Line chart showing MMR progression`}>
             {chartData.length > 1 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                  <XAxis
-                    dataKey="timestamp"
-                    type="number"
-                    scale="time"
-                    domain={['dataMin', 'dataMax']}
-                    stroke="var(--text-muted)"
-                    fontSize={10}
-                    tickLine={false}
-                    axisLine={false}
-                    dy={10}
-                    fontWeight={500}
-                    ticks={xAxisTicks}
-                    tickFormatter={(ts: number) => formatXAxisDate(ts, timeRange, localeStr)}
-                  />
-                  <YAxis
-                    domain={['dataMin - 150', 'dataMax + 150']}
-                    stroke="var(--text-muted)"
-                    fontSize={10}
-                    tickLine={false}
-                    axisLine={false}
-                    dx={-8}
-                    fontWeight={500}
-                    tickFormatter={(val) => val.toLocaleString()}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--bg-elevated)',
-                      border: '1px solid var(--border-mid)',
-                      borderRadius: 8,
-                      padding: '10px 14px',
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-                    }}
-                    cursor={{ stroke: 'var(--accent)', strokeWidth: 1, strokeDasharray: '4 4' }}
-                    itemStyle={{ color: 'var(--accent)', fontWeight: 700, fontSize: 13 }}
-                    labelStyle={{ color: 'var(--text-muted)', marginBottom: 4, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}
-                    formatter={(value: unknown) => [`${(value as number).toLocaleString()}`, t.rating]}
-                    labelFormatter={(label: unknown) => formatTooltipDate(label as number, localeStr)}
-                  />
-                  <Area
-                    type="linear"
-                    dataKey="mmr"
-                    stroke="var(--accent)"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#mmrGradient)"
-                    isAnimationActive={false}
-                    dot={false}
-                  />
-                  <defs>
-                    <linearGradient id="mmrGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.12} />
-                      <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.01} />
-                    </linearGradient>
-                  </defs>
-                </AreaChart>
-              </ResponsiveContainer>
+              <MMRChart 
+                historyData={historyData}
+                liveData={liveData}
+                timeRange={timeRange}
+                locale={localeStr}
+                loadingHistory={loadingHistory}
+              />
             ) : loadingHistory ? (
               <ChartSkeleton />
             ) : (

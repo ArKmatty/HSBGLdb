@@ -79,7 +79,7 @@ export default async function PatchNotePage({ params }: PatchNotePageProps) {
 
         <article style={{ background: 'var(--bg-surface)', borderRadius: 16, border: '1px solid var(--border-dim)', overflow: 'hidden' }}>
           {patch.image_url ? (
-            <div style={{ position: 'relative', height: 280, overflow: 'hidden' }}>
+            <div style={{ position: 'relative', height: 'clamp(180px, 30vw, 280px)', overflow: 'hidden' }}>
               <Image
                 src={patch.image_url}
                 alt={patch.title}

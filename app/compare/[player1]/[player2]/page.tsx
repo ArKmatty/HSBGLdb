@@ -229,7 +229,7 @@ export default function ComparePage() {
                   <Loader2 size={14} className="animate-spin" /> Loading...
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 8 }}>
                   {[
                     { label: 'Peak', value: p.stats.peak, icon: <Trophy size={14} /> },
                     { label: '7d Trend', value: `${p.stats.gain7d > 0 ? '+' : ''}${p.stats.gain7d}`, icon: <Activity size={14} /> },
@@ -279,7 +279,7 @@ export default function ComparePage() {
             </div>
           </div>
 
-          <div style={{ height: 'clamp(250px, 45vw, 400px)' }}>
+          <div style={{ height: 'clamp(250px, 45vw, 400px)', minWidth: 0 }}>
             {isLoading ? (
               <ChartSkeleton />
             ) : chartData.length > 1 ? (
