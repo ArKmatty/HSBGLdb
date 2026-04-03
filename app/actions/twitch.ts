@@ -148,6 +148,7 @@ export async function getTwitchStatusesForLeaderboard(accountIds: string[]) {
     try {
         const socials = await getAllSocials();
         console.log(`[Twitch] getAllSocials returned ${socials?.length || 0} records`);
+        console.log(`[Twitch] Leaderboard accountIds:`, accountIds.slice(0, 10).join(', '));
 
         if (socials.length > 0) {
             const relevantSocials = socials.filter(s =>
@@ -156,7 +157,9 @@ export async function getTwitchStatusesForLeaderboard(accountIds: string[]) {
 
             console.log(`[Twitch] Found ${relevantSocials.length} relevant socials for leaderboard`);
             if (relevantSocials.length > 0) {
-              console.log(`[Twitch] Relevant usernames:`, relevantSocials.map(s => s.twitchusername).join(', '));
+              console.log(`[Twitch] Relevant:`, JSON.stringify(relevantSocials.map(s => ({ accountid: s.accountid, twitch: s.twitchusername }))));
+            } else {
+              console.log(`[Twitch] No matches. Socials accountIds:`, socials.map(s => s.accountid).join(', '));
             }
 
             if (relevantSocials.length === 0) return {};
@@ -167,12 +170,14 @@ export async function getTwitchStatusesForLeaderboard(accountIds: string[]) {
 
             const results: Record<string, { isLive: boolean; twitchUsername: string; title?: string; viewerCount?: number }> = {};
             relevantSocials.forEach(s => {
+                const key = s.accountid.toLowerCase();
                 const status = liveMap[s.twitchusername.toLowerCase()];
-                results[s.accountid.toLowerCase()] = {
+                results[key] = {
                     twitchUsername: s.twitchusername,
                     ...status,
                     isLive: !!status,
                 };
+                console.log(`[Twitch] Result for ${key}: isLive=${!!status}`);
             });
             return results;
         }
