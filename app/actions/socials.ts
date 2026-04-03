@@ -33,11 +33,12 @@ function signSessionToken(secret: string): string {
 function verifySessionToken(token: string, secret: string): boolean {
   try {
     const parts = token.split(".");
-    if (parts.length !== 3) return false;
-    const payload = `${parts[0]}.${parts[1]}`;
-    const signature = parts[2];
+    if (parts.length !== 2) return false;
+    const payload = parts[0];
+    const signature = parts[1];
     const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
-    const timestamp = parseInt(parts[0], 10);
+    const [timestampStr] = payload.split(":");
+    const timestamp = parseInt(timestampStr, 10);
     if (isNaN(timestamp)) return false;
     if (Date.now() - timestamp > SESSION_TTL * 1000) return false;
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
