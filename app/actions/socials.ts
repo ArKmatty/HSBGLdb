@@ -27,7 +27,9 @@ function signSessionToken(secret: string): string {
   const random = crypto.randomBytes(16).toString("hex");
   const payload = `${timestamp}:${random}`;
   const signature = crypto.createHmac("sha256", secret).update(payload).digest("hex");
-  return `${payload}.${signature}`;
+  const token = `${payload}.${signature}`;
+  console.log(`[SocialAdmin] Token sign: sig=${signature.slice(0, 16)}... payload=${payload}`);
+  return token;
 }
 
 function verifySessionToken(token: string, secret: string): boolean {
@@ -41,7 +43,9 @@ function verifySessionToken(token: string, secret: string): boolean {
     const timestamp = parseInt(timestampStr, 10);
     if (isNaN(timestamp)) return false;
     if (Date.now() - timestamp > SESSION_TTL * 1000) return false;
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    const isValid = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    console.log(`[SocialAdmin] Token verify: sig=${signature.slice(0, 16)}... expected=${expected.slice(0, 16)}... valid=${isValid}`);
+    return isValid;
   } catch {
     return false;
   }
