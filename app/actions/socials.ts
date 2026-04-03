@@ -62,7 +62,7 @@ interface SocialSubmission {
 export async function submitSocialLink(data: SocialSubmission) {
   try {
     const validated = socialSubmissionSchema.safeParse(data);
-    
+
     if (!validated.success) {
       const firstError = validated.error.issues[0]?.message || "Invalid input";
       return { success: false, error: firstError };
@@ -86,10 +86,11 @@ export async function submitSocialLink(data: SocialSubmission) {
       });
 
     if (error) {
-      console.error("[SocialSubmit] Supabase error:", error.message);
+      console.error("[SocialSubmit] Supabase error:", error.message, JSON.stringify(error));
       return { success: false, error: "Failed to submit. Please try again." };
     }
 
+    console.log(`[SocialSubmit] Saved: ${data.playerName} / ${data.platform} / ${sanitizedUsername}`);
     return { success: true };
   } catch (err) {
     console.error("[SocialSubmit] Unexpected error:", err);
@@ -115,10 +116,11 @@ export async function getPendingSubmissions() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("[SocialAdmin] Fetch error:", error.message);
+      console.error("[SocialAdmin] Fetch error:", error.message, JSON.stringify(error));
       return { success: false, error: "Failed to fetch submissions." };
     }
 
+    console.log(`[SocialAdmin] Found ${data?.length || 0} pending submissions`);
     return { success: true, submissions: data || [] };
   } catch (err) {
     console.error("[SocialAdmin] Unexpected error:", err);
