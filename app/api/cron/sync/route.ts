@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
+import { revalidateTag } from 'next/cache';
 
 const REGIONS = ['EU', 'US', 'AP', 'CN'];
 const PAGES_TO_FETCH = 20; // 20 pages × 25 players = 500 players per region
@@ -133,41 +134,22 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    // Warm cache in background after sync (don't block response)
-    void warmCacheInBackground();
+    // Revalidate all cache tags so next request fetches fresh data
+    revalidateTag('leaderboard', { expire: 0 });
+    revalidateTag('multiregion', { expire: 0 });
+    revalidateTag('movers', { expire: 0 });
+    revalidateTag('fallers', { expire: 0 });
+    revalidateTag('player-live', { expire: 0 });
 
     return NextResponse.json({
       success: true,
-      message: `Sync Completato. Nuovi fotogrammi storici salvati: ${allPlayersToInsert.length}`
+      message: `Sync Completato. Nuovi fotogrammi storici salvati: ${allPlayersToInsert.length}`,
+      syncStats,
     });
 
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Errore interno';
     console.error("[CRON JOB] Errore fatale:", error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
-}
-
-/**
- * Warm cache in background after cron sync
- * Ensures users get fast responses after data updates
- */
-async function warmCacheInBackground() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-  const cronSecret = process.env.CRON_SECRET;
-  
-  if (!cronSecret) return;
-
-  try {
-    await fetch(`${baseUrl}/api/warm-cache`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${cronSecret}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    console.log('[Cron] Cache warmed successfully');
-  } catch (err) {
-    console.error('[Cron] Cache warm failed:', err);
   }
 }
