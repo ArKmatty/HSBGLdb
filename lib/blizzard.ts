@@ -113,16 +113,15 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
   if (region === 'CN') {
     // CN: Fetch from database (populated by cron sync) instead of live API
     // This is more reliable as CN API often fails from Vercel
-    const startRank = ((page - 1) * 10) + 1;
-    const endRank = page * 10;
     
+    // Get all CN players from the last 24 hours (latest snapshots)
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: dbPlayers, error: dbError } = await supabaseAdmin
       .from('leaderboard_history')
       .select('accountId, rating, rank, region, created_at')
       .eq('region', region)
-      .gte('rank', startRank)
-      .lte('rank', endRank)
-      .order('rank', { ascending: true });
+      .gte('created_at', yesterday)
+      .order('created_at', { ascending: false });
     
     if (dbError) {
       console.error(`[Blizzard CN] Database error:`, dbError.message);
@@ -130,32 +129,35 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
     }
     
     // Deduplicate by accountId (keep latest entry per player)
-    const latestMap = new Map<string, { row: BlizzardLeaderboardRow; createdAt: Date }>();
+    const latestMap = new Map<string, BlizzardLeaderboardRow>();
     for (const p of dbPlayers || []) {
-      const existing = latestMap.get(p.accountId);
-      const pDate = new Date(p.created_at);
-      if (!existing || pDate > existing.createdAt) {
+      if (!latestMap.has(p.accountId)) {
         latestMap.set(p.accountId, {
-          row: {
-            rank: p.rank,
-            accountid: p.accountId,
-            rating: p.rating,
-          },
-          createdAt: pDate,
+          rank: p.rank,
+          accountid: p.accountId,
+          rating: p.rating,
         });
       }
     }
     
-    // Sort by rank and return unique players
+    // Sort by rating (descending) and assign proper ranks
     const currentPlayers = Array.from(latestMap.values())
-      .map(v => v.row)
-      .sort((a, b) => a.rank - b.rank);
-    console.log(`[Blizzard CN] Fetched ${currentPlayers.length} players from database (ranks ${startRank}-${endRank})`);
+      .sort((a, b) => b.rating - a.rating)
+      .map((player, idx) => ({
+        ...player,
+        rank: idx + 1,
+      }));
     
-    if (currentPlayers.length === 0) return [];
+    // Paginate
+    const pageSize = 10;
+    const startIdx = (page - 1) * pageSize;
+    const paginatedPlayers = currentPlayers.slice(startIdx, startIdx + pageSize);
+    
+    console.log(`[Blizzard CN] Fetched ${currentPlayers.length} unique players, showing page ${page} (${paginatedPlayers.length} players)`);
+    
+    if (paginatedPlayers.length === 0) return [];
 
-    const playerNames = currentPlayers.map(p => p.accountid);
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const playerNames = paginatedPlayers.map(p => p.accountid);
 
     // Retry snapshot query up to 3 times on failure
     let snapshots: any[] = [];
@@ -167,7 +169,7 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
           .select('accountId, rating, created_at, region')
           .in('accountId', playerNames)
           .eq('region', region)
-          .gte('created_at', yesterday)
+          .lt('created_at', new Date().toISOString())
           .order('created_at', { ascending: true });
         
         snapshots = result.data || [];
@@ -182,45 +184,27 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
     if (snapError) {
       console.error(`[Blizzard CN] Snapshot query error after retries:`, snapError.message);
     }
-    console.log(`[Blizzard CN] Found ${snapshots?.length || 0} snapshots for ${playerNames.length} players (region filter: ${region})`);
+    console.log(`[Blizzard CN] Found ${snapshots?.length || 0} historical snapshots for ${playerNames.length} players`);
     
-    // Debug: log specific player snapshots
-    if (snapshots && snapshots.length > 0) {
-      const regionsFound = new Set(snapshots.map(s => s.region));
-      console.log(`[Blizzard CN] Snapshot regions found:`, Array.from(regionsFound));
-      
-      // Log specific data for "jeef" if present
-      const jeefSnapshots = snapshots.filter(s => s.accountId.toLowerCase() === 'jeef');
-      if (jeefSnapshots.length > 0) {
-        console.log(`[Blizzard CN] jeef snapshots:`, jeefSnapshots);
-      }
-    }
-
-    // Debug: check if any snapshots have wrong region
-    const wrongRegionSnapshots = snapshots?.filter(s => s.region !== region);
-    if (wrongRegionSnapshots && wrongRegionSnapshots.length > 0) {
-      console.error(`[Blizzard CN] WARNING: Found ${wrongRegionSnapshots.length} snapshots with wrong region!`);
-      console.error(`[Blizzard CN] Wrong region samples:`, wrongRegionSnapshots.slice(0, 5));
-    }
-
-    const snapshotMap = new Map<string, number>();
+    // Get the OLDEST snapshot per player for trend calculation (within last 24h)
+    const oldestSnapshotMap = new Map<string, number>();
     for (const s of snapshots || []) {
       const key = s.accountId.toLowerCase();
-      if (!snapshotMap.has(key)) {
-        snapshotMap.set(key, s.rating);
+      if (!oldestSnapshotMap.has(key)) {
+        oldestSnapshotMap.set(key, s.rating);
       }
     }
 
     // Debug: log jeef's trend calculation
-    const jeefPlayer = currentPlayers.find(p => p.accountid.toLowerCase() === 'jeef');
+    const jeefPlayer = paginatedPlayers.find(p => p.accountid.toLowerCase() === 'jeef');
     if (jeefPlayer) {
-      const jeefSnapshotRating = snapshotMap.get('jeef');
+      const jeefSnapshotRating = oldestSnapshotMap.get('jeef');
       const trend = jeefSnapshotRating ? jeefPlayer.rating - jeefSnapshotRating : 0;
-      console.log(`[Blizzard CN] jeef: current=${jeefPlayer.rating}, snapshot=${jeefSnapshotRating}, trend=${trend}`);
+      console.log(`[Blizzard CN] jeef: current=${jeefPlayer.rating}, oldestSnapshot=${jeefSnapshotRating}, trend=${trend}`);
     }
 
-    return currentPlayers.map(player => {
-      const oldestRating = snapshotMap.get(player.accountid.toLowerCase());
+    return paginatedPlayers.map(player => {
+      const oldestRating = oldestSnapshotMap.get(player.accountid.toLowerCase());
       const lastRating = oldestRating !== undefined ? oldestRating : player.rating;
       return { ...player, lastRating };
     });
