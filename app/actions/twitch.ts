@@ -51,18 +51,11 @@ export async function getTwitchLiveStatus(usernames: string[]) {
   if (!usernames || usernames.length === 0) return {};
 
   const token = await getTwitchAccessToken();
-  console.log(`[Twitch] getTwitchLiveStatus called for: ${usernames.join(', ')}, token present: ${!!token}, CLIENT_ID present: ${!!CLIENT_ID}`);
-
-  if (!token || !CLIENT_ID) {
-    console.log(`[Twitch] Missing auth, returning empty`);
-    return {};
-  }
+  if (!token || !CLIENT_ID) return {};
 
   try {
     const query = usernames.map(u => `user_login=${u}`).join('&');
-    const url = `https://api.twitch.tv/helix/streams?${query}`;
-    console.log(`[Twitch] Fetching: ${url}`);
-    const response = await fetch(url, {
+    const response = await fetch(`https://api.twitch.tv/helix/streams?${query}`, {
       headers: {
         'Client-ID': CLIENT_ID,
         'Authorization': `Bearer ${token}`
@@ -70,10 +63,7 @@ export async function getTwitchLiveStatus(usernames: string[]) {
       next: { revalidate: 60 }
     });
 
-    console.log(`[Twitch] Response status: ${response.status}`);
     const data = await response.json() as TwitchStreamsResponse;
-    console.log(`[Twitch] Response data:`, JSON.stringify(data).slice(0, 500));
-
     const liveMap: Record<string, TwitchLiveStatus> = {};
 
     data.data?.forEach((stream) => {
@@ -147,37 +137,25 @@ const getAllSocials = unstable_cache(
 export async function getTwitchStatusesForLeaderboard(accountIds: string[]) {
     try {
         const socials = await getAllSocials();
-        console.log(`[Twitch] getAllSocials returned ${socials?.length || 0} records`);
-        console.log(`[Twitch] Leaderboard accountIds:`, accountIds.slice(0, 10).join(', '));
 
         if (socials.length > 0) {
             const relevantSocials = socials.filter(s =>
                 accountIds.some(id => id.toLowerCase() === s.accountid.toLowerCase())
             );
 
-            console.log(`[Twitch] Found ${relevantSocials.length} relevant socials for leaderboard`);
-            if (relevantSocials.length > 0) {
-              console.log(`[Twitch] Relevant:`, JSON.stringify(relevantSocials.map(s => ({ accountid: s.accountid, twitch: s.twitchusername }))));
-            } else {
-              console.log(`[Twitch] No matches. Socials accountIds:`, socials.map(s => s.accountid).join(', '));
-            }
-
             if (relevantSocials.length === 0) return {};
 
             const twitchUsernames = relevantSocials.map(s => s.twitchusername);
             const liveMap = await getTwitchLiveStatus(twitchUsernames);
-            console.log(`[Twitch] Live map keys:`, Object.keys(liveMap).join(', ') || '(none)');
 
             const results: Record<string, { isLive: boolean; twitchUsername: string; title?: string; viewerCount?: number }> = {};
             relevantSocials.forEach(s => {
-                const key = s.accountid.toLowerCase();
                 const status = liveMap[s.twitchusername.toLowerCase()];
-                results[key] = {
+                results[s.accountid.toLowerCase()] = {
                     twitchUsername: s.twitchusername,
                     ...status,
                     isLive: !!status,
                 };
-                console.log(`[Twitch] Result for ${key}: isLive=${!!status}`);
             });
             return results;
         }
