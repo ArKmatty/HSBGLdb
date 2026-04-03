@@ -105,7 +105,7 @@ export const getTopMovers = unstable_cache(
     return result.movers;
   },
   ['top-movers-cache'],
-  { revalidate: 1800, tags: ['movers'] }
+  { revalidate: 600, tags: ['movers'] }
 );
 
 export const getTopFallers = unstable_cache(
@@ -114,7 +114,7 @@ export const getTopFallers = unstable_cache(
     return result.fallers;
   },
   ['top-fallers-cache'],
-  { revalidate: 1800, tags: ['fallers'] }
+  { revalidate: 600, tags: ['fallers'] }
 );
 
 /**
@@ -133,7 +133,13 @@ export const getMoversAndFallers = unstable_cache(
       .gte('created_at', yesterday)
       .order('created_at', { ascending: true });
 
-    if (error || !data || data.length === 0) {
+    if (error) {
+      console.error('[Movers] Error fetching data for', region, ':', error.message);
+      return { movers: [], fallers: [] };
+    }
+
+    if (!data || data.length === 0) {
+      console.log('[Movers] No history data for', region, 'in last 24h');
       return { movers: [], fallers: [] };
     }
 
@@ -156,6 +162,11 @@ export const getMoversAndFallers = unstable_cache(
       return { accountid, diff, rating: lastRating };
     });
 
+    // Log stats for debugging
+    const moverCount = players.filter(m => m.diff > 0).length;
+    const fallerCount = players.filter(m => m.diff < 0).length;
+    console.log(`[Movers] ${region}: ${playerStats.length} players, ${moverCount} movers, ${fallerCount} fallers`);
+
     // Split into movers and fallers
     const movers = players
       .filter(m => m.diff > 0)
@@ -170,5 +181,5 @@ export const getMoversAndFallers = unstable_cache(
     return { movers, fallers };
   },
   ['movers-fallers-combined-cache'],
-  { revalidate: 1800, tags: ['movers', 'fallers'] }
+  { revalidate: 600, tags: ['movers', 'fallers'] }
 );

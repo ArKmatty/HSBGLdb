@@ -13,7 +13,22 @@ interface Mover {
 
 export default function TopMoversWidget({ players, fallers, locale, region }: { players: Mover[]; fallers?: Mover[]; locale: Locale; region?: string }) {
   const t = translations[locale];
-  if (!players || players.length === 0) return null;
+  if (!players || players.length === 0) {
+    // Show empty state with subtle message instead of hiding completely
+    return (
+      <section style={{ marginBottom: 28, opacity: 0.5 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <TrendingUp size={13} color="var(--text-muted)" />
+          <h2 style={{ margin: 0, fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
+            {t.topMovers}
+          </h2>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+          Not enough data in the last 24h to show movers.
+        </p>
+      </section>
+    );
+  }
 
   const regionParam = region || 'EU';
 
