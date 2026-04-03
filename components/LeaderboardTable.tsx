@@ -7,6 +7,7 @@ import { TrendingUp, TrendingDown, Minus, Tv, ChevronUp, ChevronDown, Crown } fr
 import type { Locale } from "@/lib/i18n";
 import { translations } from "@/lib/i18n";
 import { EmptyState } from "./EmptyState";
+import { getTwitchStatusesForLeaderboard } from "@/app/actions/twitch";
 
 interface Player {
   rank: number;
@@ -19,7 +20,8 @@ type SortKey = 'rank' | 'name' | 'mmr' | 'delta';
 
 const RANK_COLORS: Record<number, string> = { 1: '#e8a838', 2: '#8b8fa3', 3: '#a0722a' };
 
-export default function LeaderboardTable({ players, twitchStatuses = {}, locale, region }: { players: Player[]; twitchStatuses?: Record<string, { isLive: boolean; twitchUsername?: string; title?: string; viewerCount?: number }>; locale: Locale; region?: string }) {
+export default function LeaderboardTable({ players, twitchStatuses: initialTwitchStatuses = {}, locale, region }: { players: Player[]; twitchStatuses?: Record<string, { isLive: boolean; twitchUsername?: string; title?: string; viewerCount?: number }>; locale: Locale; region?: string }) {
+  const [twitchStatuses, setTwitchStatuses] = useState(initialTwitchStatuses);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>('rank');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -29,12 +31,12 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale,
   useEffect(() => {
     const REFRESH_COOLDOWN_MS = 60_000; // 1 minute cooldown between refreshes
     let lastRefreshTime = 0;
-    
+
     const handler = () => {
       if (!document.hidden) {
         const now = Date.now();
         const timeSinceLastRefresh = now - lastRefreshTime;
-        
+
         // Only refresh if cooldown period has passed
         if (timeSinceLastRefresh >= REFRESH_COOLDOWN_MS) {
           router.refresh();
@@ -42,10 +44,23 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale,
         }
       }
     };
-    
+
     document.addEventListener('visibilitychange', handler);
     return () => document.removeEventListener('visibilitychange', handler);
   }, [router]);
+
+  // Fetch Twitch statuses client-side after initial render (non-blocking for FCP)
+  useEffect(() => {
+    let cancelled = false;
+    const fetchTwitch = async () => {
+      const playerIds = players.map(p => p.accountid);
+      if (playerIds.length === 0) return;
+      const statuses = await getTwitchStatusesForLeaderboard(playerIds);
+      if (!cancelled) setTwitchStatuses(statuses);
+    };
+    fetchTwitch();
+    return () => { cancelled = true; };
+  }, [players]);
 
   const getDelta = useCallback((p: Player) => p.lastRating ? p.rating - p.lastRating : 0, []);
 

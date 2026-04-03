@@ -110,7 +110,8 @@ export default async function Home({ searchParams }: Props) {
   const { movers: topMovers, fallers: topFallers } = moversAndFallers;
 
   const playerIds = players.map(p => p.accountid);
-  const twitchStatuses = await getTwitchStatusesForLeaderboard(playerIds);
+  // Note: Twitch statuses now fetched client-side for faster FCP
+  const twitchStatuses: Record<string, any> = {};
   const now = new Date().getTime();
 
   return (
