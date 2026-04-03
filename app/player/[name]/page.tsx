@@ -2,7 +2,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { ChevronLeft, TrendingUp, Trophy, Activity, Swords, Globe, AlertCircle, Loader2, Award, Tv } from 'lucide-react';
+import { ChevronLeft, TrendingUp, Trophy, Activity, Swords, Globe, AlertCircle, Loader2, Award } from 'lucide-react';
 import Link from 'next/link';
 import { getPlayerHistory, getPlayerLive } from '@/app/actions/player';
 import { getTwitchStatusForPlayer } from '@/app/actions/twitch';
@@ -274,7 +274,7 @@ export default function PlayerPage() {
             marginBottom: 24,
             padding: '14px 16px',
             background: 'var(--bg-surface)',
-            border: '1px solid rgba(167,139,250,0.2)',
+            border: '1px solid rgba(145,70,255,0.2)',
             borderRadius: 8,
             display: 'flex',
             alignItems: 'center',
@@ -286,10 +286,12 @@ export default function PlayerPage() {
               <div style={{ position: 'relative' }}>
                 <div style={{
                   width: 36, height: 36, borderRadius: 8,
-                  background: 'rgba(167,139,250,0.15)',
+                  background: 'rgba(145,70,255,0.15)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Tv size={18} color="var(--purple)" />
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#9146FF">
+                    <path d="M4.265 1 2 5.385v13.229h4.504V23l4.313-4.386h3.616L21.736 11.3V1H4.265zm2.382 2.308h12.698v7.269l-4.504 4.634h-4.313L7.27 19.304v-4.093H6.647V3.308zm3.656 3.23v4.053h2.156V6.538H10.303zm5.66 0v4.053h2.157V6.538h-2.157z"/>
+                  </svg>
                 </div>
                 <span style={{
                   position: 'absolute', bottom: -2, right: -2,
@@ -429,9 +431,12 @@ export default function PlayerPage() {
                     <a
                       href={`https://twitch.tv/${twitchData.username}`}
                       target="_blank"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--purple)', fontWeight: 500 }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#9146FF', fontWeight: 500 }}
                     >
-                      <Tv size={11} /> {twitchData.username}
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M4.265 1 2 5.385v13.229h4.504V23l4.313-4.386h3.616L21.736 11.3V1H4.265zm2.382 2.308h12.698v7.269l-4.504 4.634h-4.313L7.27 19.304v-4.093H6.647V3.308zm3.656 3.23v4.053h2.156V6.538H10.303zm5.66 0v4.053h2.157V6.538h-2.157z"/>
+                      </svg>
+                      {twitchData.username}
                     </a>
                   </>
                 )}

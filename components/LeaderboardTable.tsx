@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp, TrendingDown, Minus, Tv, ChevronUp, ChevronDown, Crown } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, ChevronUp, ChevronDown, Crown } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
 import { translations } from "@/lib/i18n";
 import { EmptyState } from "./EmptyState";
@@ -280,19 +280,20 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
                               display: 'inline-flex', alignItems: 'center', gap: 4,
                               padding: '6px 10px',
                               borderRadius: 6,
-                              background: 'rgba(167,139,250,0.15)',
-                              border: '1px solid rgba(167,139,250,0.3)',
+                              background: 'rgba(145,70,255,0.15)',
+                              border: '1px solid rgba(145,70,255,0.3)',
                               fontSize: 10,
                               fontWeight: 700,
-                              color: 'var(--purple)',
+                              color: '#9146FF',
                               letterSpacing: '0.05em',
                               textTransform: 'uppercase',
                               flexShrink: 0,
-                              boxShadow: '0 0 12px rgba(167,139,250,0.2)',
-                              animation: 'pulse 2s infinite',
+                              boxShadow: '0 0 12px rgba(145,70,255,0.2)',
                             }}
                           >
-                            <Tv size={10} />
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M4.265 1 2 5.385v13.229h4.504V23l4.313-4.386h3.616L21.736 11.3V1H4.265zm2.382 2.308h12.698v7.269l-4.504 4.634h-4.313L7.27 19.304v-4.093H6.647V3.308zm3.656 3.23v4.053h2.156V6.538H10.303zm5.66 0v4.053h2.157V6.538h-2.157z"/>
+                            </svg>
                             Live
                           </a>
                         )}

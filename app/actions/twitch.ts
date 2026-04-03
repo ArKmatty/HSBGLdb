@@ -13,9 +13,7 @@ const CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
  */
 const getTwitchAccessToken = unstable_cache(
   async () => {
-    console.log(`[Twitch] getTwitchAccessToken: CLIENT_ID present: ${!!CLIENT_ID}, CLIENT_SECRET present: ${!!CLIENT_SECRET}`);
     if (!CLIENT_ID || !CLIENT_SECRET) {
-      console.log(`[Twitch] Missing credentials, returning null`);
       return null;
     }
 
@@ -33,16 +31,10 @@ const getTwitchAccessToken = unstable_cache(
           cache: 'no-store',
         }
       );
-      console.log(`[Twitch] Token response status: ${response.status}`);
       const data = await response.json() as TwitchTokenResponse;
-      if (data.access_token) {
-        console.log(`[Twitch] Token obtained (expires in ${data.expires_in}s)`);
-      } else {
-        console.log(`[Twitch] No access_token in response:`, JSON.stringify(data).slice(0, 200));
-      }
       return data.access_token;
     } catch (e) {
-      console.error("[Twitch] Error fetching Twitch Token:", e);
+      console.error("[Twitch] Error fetching token:", e);
       return null;
     }
   },
