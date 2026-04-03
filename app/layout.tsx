@@ -7,6 +7,7 @@ import { detectLocale } from "@/lib/i18n";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
 import SkipLink from "@/components/SkipLink";
+import GitHubLink from "@/components/GitHubLink";
 import { WatchlistProvider } from "@/lib/watchlist";
 import "./globals.css";
 
@@ -130,6 +131,7 @@ export default async function RootLayout({
           </main>
           <SiteFooter />
         </WatchlistProvider>
+        <GitHubLink />
         <Analytics />
         <SpeedInsights />
       </body>
