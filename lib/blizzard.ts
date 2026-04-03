@@ -129,7 +129,7 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
       return [];
     }
     
-    // Deduplicate by accountId (keep latest)
+    // Deduplicate by accountId (keep latest entry per player)
     const latestMap = new Map<string, { row: BlizzardLeaderboardRow; createdAt: Date }>();
     for (const p of dbPlayers || []) {
       const existing = latestMap.get(p.accountId);
@@ -146,7 +146,10 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
       }
     }
     
-    const currentPlayers = Array.from(latestMap.values()).map(v => v.row);
+    // Sort by rank and return unique players
+    const currentPlayers = Array.from(latestMap.values())
+      .map(v => v.row)
+      .sort((a, b) => a.rank - b.rank);
     console.log(`[Blizzard CN] Fetched ${currentPlayers.length} players from database (ranks ${startRank}-${endRank})`);
     
     if (currentPlayers.length === 0) return [];

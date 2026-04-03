@@ -188,7 +188,7 @@ export default function LeaderboardTable({ players, twitchStatuses = {}, locale,
 
                 return (
                   <tr
-                    key={player.rank}
+                    key={`${player.accountid}-${player.rank}`}
                     className="leaderboard-row"
                     style={{
                       borderTop: idx === 0 ? 'none' : '1px solid var(--border-dim)',
