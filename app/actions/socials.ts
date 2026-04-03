@@ -27,9 +27,7 @@ function signSessionToken(secret: string): string {
   const random = crypto.randomBytes(16).toString("hex");
   const payload = `${timestamp}:${random}`;
   const signature = crypto.createHmac("sha256", secret).update(payload).digest("hex");
-  const token = `${payload}.${signature}`;
-  console.log(`[SocialAdmin] Token sign: sig=${signature.slice(0, 16)}... payload=${payload}`);
-  return token;
+  return `${payload}.${signature}`;
 }
 
 function verifySessionToken(token: string, secret: string): boolean {
@@ -43,9 +41,7 @@ function verifySessionToken(token: string, secret: string): boolean {
     const timestamp = parseInt(timestampStr, 10);
     if (isNaN(timestamp)) return false;
     if (Date.now() - timestamp > SESSION_TTL * 1000) return false;
-    const isValid = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-    console.log(`[SocialAdmin] Token verify: sig=${signature.slice(0, 16)}... expected=${expected.slice(0, 16)}... valid=${isValid}`);
-    return isValid;
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
   } catch {
     return false;
   }
@@ -91,11 +87,10 @@ export async function submitSocialLink(data: SocialSubmission) {
       });
 
     if (error) {
-      console.error("[SocialSubmit] Supabase error:", error.message, JSON.stringify(error));
+      console.error("[SocialSubmit] Supabase error:", error.message);
       return { success: false, error: "Failed to submit. Please try again." };
     }
 
-    console.log(`[SocialSubmit] Saved: ${data.playerName} / ${data.platform} / ${sanitizedUsername}`);
     return { success: true };
   } catch (err) {
     console.error("[SocialSubmit] Unexpected error:", err);
@@ -109,24 +104,11 @@ export async function submitSocialLink(data: SocialSubmission) {
  * @returns Object with success status and array of pending submissions
  */
 export async function getPendingSubmissions() {
-  const authResult = await isAdminAuthenticated();
-  console.log(`[SocialAdmin] isAdminAuthenticated: ${authResult}`);
-  if (!authResult) {
+  if (!await isAdminAuthenticated()) {
     return { success: false, error: "Unauthorized." };
   }
 
   try {
-    // First, check total count
-    const { count: totalCount, error: countError } = await supabaseAdmin
-      .from("social_submissions")
-      .select("*", { count: 'exact', head: true });
-
-    if (countError) {
-      console.error("[SocialAdmin] Count error:", countError.message, JSON.stringify(countError));
-    } else {
-      console.log(`[SocialAdmin] Total rows in table: ${totalCount}`);
-    }
-
     const { data, error } = await supabaseAdmin
       .from("social_submissions")
       .select("*")
@@ -134,14 +116,10 @@ export async function getPendingSubmissions() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("[SocialAdmin] Fetch error:", error.message, JSON.stringify(error));
+      console.error("[SocialAdmin] Fetch error:", error.message);
       return { success: false, error: "Failed to fetch submissions." };
     }
 
-    console.log(`[SocialAdmin] Found ${data?.length || 0} pending submissions`);
-    if (data?.length) {
-      console.log(`[SocialAdmin] First pending:`, JSON.stringify(data[0]));
-    }
     return { success: true, submissions: data || [] };
   } catch (err) {
     console.error("[SocialAdmin] Unexpected error:", err);
@@ -236,8 +214,6 @@ export async function rejectSubmission(id: string) {
  * @returns Object with success status or error message
  */
 export async function loginAdmin(password: string) {
-  console.log(`[SocialAdmin] loginAdmin called, ADMIN_SECRET set: ${!!ADMIN_SECRET}`);
-
   if (!ADMIN_SECRET) {
     return { success: false, error: "Admin secret not configured." };
   }
@@ -265,7 +241,6 @@ export async function loginAdmin(password: string) {
   loginAttempts.delete(ip);
 
   const token = signSessionToken(ADMIN_SECRET);
-  console.log(`[SocialAdmin] Signing in, token length: ${token.length}, NODE_ENV: ${process.env.NODE_ENV}`);
 
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
@@ -276,7 +251,6 @@ export async function loginAdmin(password: string) {
     path: "/",
   });
 
-  console.log(`[SocialAdmin] Cookie set complete`);
   return { success: true };
 }
 
@@ -291,17 +265,11 @@ export async function logoutAdmin() {
 }
 
 async function isAdminAuthenticated(): Promise<boolean> {
-  if (!ADMIN_SECRET) {
-    console.log('[SocialAdmin] ADMIN_SECRET is not configured');
-    return false;
-  }
+  if (!ADMIN_SECRET) return false;
   const cookieStore = await cookies();
   const auth = cookieStore.get(COOKIE_NAME);
-  console.log(`[SocialAdmin] admin_auth cookie present: ${!!auth?.value}, length: ${auth?.value?.length || 0}`);
   if (!auth?.value) return false;
-  const isValid = verifySessionToken(auth.value, ADMIN_SECRET);
-  console.log(`[SocialAdmin] Token verification result: ${isValid}`);
-  return isValid;
+  return verifySessionToken(auth.value, ADMIN_SECRET);
 }
 
 function buildPlatformUrl(platform: string, username: string): string {
