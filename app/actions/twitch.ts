@@ -51,19 +51,29 @@ export async function getTwitchLiveStatus(usernames: string[]) {
   if (!usernames || usernames.length === 0) return {};
 
   const token = await getTwitchAccessToken();
-  if (!token || !CLIENT_ID) return {};
+  console.log(`[Twitch] getTwitchLiveStatus called for: ${usernames.join(', ')}, token present: ${!!token}, CLIENT_ID present: ${!!CLIENT_ID}`);
+
+  if (!token || !CLIENT_ID) {
+    console.log(`[Twitch] Missing auth, returning empty`);
+    return {};
+  }
 
   try {
     const query = usernames.map(u => `user_login=${u}`).join('&');
-    const response = await fetch(`https://api.twitch.tv/helix/streams?${query}`, {
+    const url = `https://api.twitch.tv/helix/streams?${query}`;
+    console.log(`[Twitch] Fetching: ${url}`);
+    const response = await fetch(url, {
       headers: {
         'Client-ID': CLIENT_ID,
         'Authorization': `Bearer ${token}`
       },
-      next: { revalidate: 60 } // Cache per 60 secondi
+      next: { revalidate: 60 }
     });
 
+    console.log(`[Twitch] Response status: ${response.status}`);
     const data = await response.json() as TwitchStreamsResponse;
+    console.log(`[Twitch] Response data:`, JSON.stringify(data).slice(0, 500));
+
     const liveMap: Record<string, TwitchLiveStatus> = {};
 
     data.data?.forEach((stream) => {
