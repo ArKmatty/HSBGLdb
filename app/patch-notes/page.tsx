@@ -4,7 +4,7 @@ import PatchNotesList from './PatchNotesList';
 import RefreshButton from './RefreshButton';
 
 function getBaseUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL || 'https://hsbg-ldb.vercel.app';
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://hearthstone-leaderboard.vercel.app';
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -13,14 +13,14 @@ export async function generateMetadata(): Promise<Metadata> {
   const latestPatch = patchNotes[0];
 
   return {
-    title: 'Battlegrounds Patch Notes — HSBGLdb',
+    title: 'Battlegrounds Patch Notes — Hearthstone BG Leaderboard',
     description: latestPatch?.summary || 'Latest Hearthstone Battlegrounds patch notes, balance changes, and meta updates. Stay current with the newest BG changes.',
     openGraph: {
       title: 'Battlegrounds Patch Notes',
       description: 'Latest Hearthstone Battlegrounds patch notes and balance changes',
       url: `${baseUrl}/patch-notes`,
       type: 'article',
-      siteName: 'HSBGLdb',
+      siteName: 'Hearthstone Battlegrounds Leaderboard',
     },
     twitter: {
       card: 'summary_large_image',

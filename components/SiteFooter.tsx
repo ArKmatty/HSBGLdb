@@ -30,7 +30,7 @@ export default function SiteFooter() {
           </div>
          <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
            <Link
-             href="https://github.com/ArKmatty/HSBGLdb"
+             href="https://github.com/ArKmatty/Hearthstone-BG-Leaderboard"
              target="_blank"
              rel="noopener noreferrer"
              className="footer-link"

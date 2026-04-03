@@ -22,11 +22,11 @@ function getBaseUrl() {
 export const metadata: Metadata = {
   title: {
     default: "Hearthstone Battlegrounds Leaderboard — Live MMR Rankings",
-    template: "%s | HS BG Leaderboard",
+    template: "%s | Hearthstone BG Leaderboard",
   },
   description: "Track top Hearthstone Battlegrounds players across EU, US, AP, and CN regions. Live MMR rankings, player stats, historical trends, and Twitch stream status.",
   keywords: ["Hearthstone", "Battlegrounds", "Leaderboard", "MMR", "Ranking", "Blizzard", "BG", "Top Players", "Live Stats", "Battlegrounds Leaderboard", "HS BG"],
-  authors: [{ name: "HS BG Leaderboard" }],
+  authors: [{ name: "Hearthstone BG Leaderboard" }],
   category: "games",
   classification: "Video Game Leaderboard",
   openGraph: {
@@ -34,9 +34,9 @@ export const metadata: Metadata = {
     description: "Live MMR rankings for top Hearthstone Battlegrounds players across all regions.",
     type: "website",
     locale: "en_US",
-    siteName: "HSBGLdb",
+    siteName: "Hearthstone Battlegrounds Leaderboard",
     url: getBaseUrl() || 'https://your-domain.com',
-    images: [{ url: "/api/og", width: 1200, height: 630, alt: "HS BG Leaderboard" }],
+    images: [{ url: "/api/og", width: 1200, height: 630, alt: "Hearthstone BG Leaderboard" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -72,8 +72,8 @@ export default async function RootLayout({
     {
       '@context': 'https://schema.org',
       '@type': 'WebSite',
-      name: 'HSBGLdb',
-      alternateName: ['Hearthstone Battlegrounds Leaderboard', 'HS BG Leaderboard'],
+      name: 'Hearthstone Battlegrounds Leaderboard',
+      alternateName: ['HS BG Leaderboard', 'Hearthstone BG Leaderboard'],
       url: baseUrl,
       potentialAction: {
         '@type': 'SearchAction',
@@ -87,7 +87,7 @@ export default async function RootLayout({
     {
       '@context': 'https://schema.org',
       '@type': 'WebApplication',
-      name: 'HSBGLdb — Hearthstone Battlegrounds Leaderboard',
+      name: 'Hearthstone Battlegrounds Leaderboard',
       description: 'Live MMR rankings and player stats for Hearthstone Battlegrounds',
       url: baseUrl,
       applicationCategory: 'Games',
@@ -104,7 +104,7 @@ export default async function RootLayout({
       },
       author: {
         '@type': 'Organization',
-        name: 'HSBGLdb',
+        name: 'Hearthstone Battlegrounds Leaderboard',
       },
     },
   ];

@@ -120,7 +120,7 @@ export default function SiteNav() {
               }}
             >
               <Image src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={28} height={28} style={{ objectFit: 'contain', background: 'var(--bg-surface)', borderRadius: 6 }} />
-              <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.02em' }}>HSBGLdb</span>
+              <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.02em' }}>HS BG Leaderboard</span>
             </Link>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

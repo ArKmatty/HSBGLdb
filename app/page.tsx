@@ -69,7 +69,7 @@ export async function generateMetadata(
       description,
       url,
       type: 'website',
-      siteName: 'HSBGLdb',
+      siteName: 'Hearthstone Battlegrounds Leaderboard',
       locale: 'en_US',
     },
     twitter: {
@@ -200,13 +200,13 @@ export default async function Home({ searchParams }: Props) {
           </h2>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
             <p style={{ marginBottom: 12 }}>
-              HSBGLdb provides live <strong style={{ color: 'var(--text-primary)' }}>Hearthstone Battlegrounds MMR rankings</strong> for top players across all competitive regions: <strong style={{ color: 'var(--text-primary)' }}>Europe (EU)</strong>, <strong style={{ color: 'var(--text-primary)' }}>Americas (US)</strong>, <strong style={{ color: 'var(--text-primary)' }}>Asia-Pacific (AP)</strong>, and <strong style={{ color: 'var(--text-primary)' }}>China (CN)</strong>. Track real-time rating changes, historical trends, and player performance over the last 24 hours, 7 days, and 30 days.
+              Hearthstone BG Leaderboard provides live <strong style={{ color: 'var(--text-primary)' }}>Hearthstone Battlegrounds MMR rankings</strong> for top players across all competitive regions: <strong style={{ color: 'var(--text-primary)' }}>Europe (EU)</strong>, <strong style={{ color: 'var(--text-primary)' }}>Americas (US)</strong>, <strong style={{ color: 'var(--text-primary)' }}>Asia-Pacific (AP)</strong>, and <strong style={{ color: 'var(--text-primary)' }}>China (CN)</strong>. Track real-time rating changes, historical trends, and player performance over the last 24 hours, 7 days, and 30 days.
             </p>
             <p style={{ marginBottom: 12 }}>
               Monitor <strong style={{ color: 'var(--text-primary)' }}>MMR trends</strong>, discover top movers and biggest fallers in the Battlegrounds ladder, and watch live Twitch streams from ranked players. Search any player by name to view their detailed rating history, peak MMR, and match statistics.
             </p>
             <p style={{ marginBottom: 0 }}>
-              Data updates automatically every few minutes from the official Blizzard API. Whether you're tracking your climb to Legend or watching the top 100 race for rank #1, HSBGLdb gives you the competitive edge in Hearthstone Battlegrounds.
+              Data updates automatically every few minutes from the official Blizzard API. Whether you're tracking your climb to Legend or watching the top 100 race for rank #1, Hearthstone BG Leaderboard gives you the competitive edge in Hearthstone Battlegrounds.
             </p>
           </div>
         </section>
