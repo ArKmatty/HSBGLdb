@@ -124,14 +124,41 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `Sync Completato. Nuovi fotogrammi storici salvati: ${allPlayersToInsert.length}` 
+    // Warm cache in background after sync (don't block response)
+    void warmCacheInBackground();
+
+    return NextResponse.json({
+      success: true,
+      message: `Sync Completato. Nuovi fotogrammi storici salvati: ${allPlayersToInsert.length}`
     });
 
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Errore interno';
     console.error("[CRON JOB] Errore fatale:", error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}
+
+/**
+ * Warm cache in background after cron sync
+ * Ensures users get fast responses after data updates
+ */
+async function warmCacheInBackground() {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const cronSecret = process.env.CRON_SECRET;
+  
+  if (!cronSecret) return;
+
+  try {
+    await fetch(`${baseUrl}/api/warm-cache`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${cronSecret}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    console.log('[Cron] Cache warmed successfully');
+  } catch (err) {
+    console.error('[Cron] Cache warm failed:', err);
   }
 }
