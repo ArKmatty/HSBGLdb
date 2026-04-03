@@ -57,12 +57,16 @@ export default function TopMoversWidget({ players, fallers, locale, region }: { 
               flexShrink: 0,
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.borderColor = 'var(--border-mid)';
+              e.currentTarget.style.borderTopColor = 'var(--border-mid)';
+              e.currentTarget.style.borderRightColor = 'var(--border-mid)';
+              e.currentTarget.style.borderBottomColor = 'var(--border-mid)';
               e.currentTarget.style.boxShadow = 'var(--shadow-md)';
               e.currentTarget.style.transform = 'translateY(-2px)';
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'var(--border-dim)';
+              e.currentTarget.style.borderTopColor = 'var(--border-dim)';
+              e.currentTarget.style.borderRightColor = 'var(--border-dim)';
+              e.currentTarget.style.borderBottomColor = 'var(--border-dim)';
               e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
               e.currentTarget.style.transform = 'translateY(0)';
             }}
@@ -136,12 +140,16 @@ export default function TopMoversWidget({ players, fallers, locale, region }: { 
                   flexShrink: 0,
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = 'var(--border-mid)';
+                  e.currentTarget.style.borderTopColor = 'var(--border-mid)';
+                  e.currentTarget.style.borderRightColor = 'var(--border-mid)';
+                  e.currentTarget.style.borderBottomColor = 'var(--border-mid)';
                   e.currentTarget.style.boxShadow = 'var(--shadow-md)';
                   e.currentTarget.style.transform = 'translateY(-2px)';
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = 'var(--border-dim)';
+                  e.currentTarget.style.borderTopColor = 'var(--border-dim)';
+                  e.currentTarget.style.borderRightColor = 'var(--border-dim)';
+                  e.currentTarget.style.borderBottomColor = 'var(--border-dim)';
                   e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
