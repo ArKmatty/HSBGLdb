@@ -67,7 +67,7 @@ export const translations = {
     player: 'Giocatore',
     mmr: 'MMR',
     topMovers: 'Top Movers · 24h',
-    biggestDrops: 'Peggiori Calate · 24h',
+    biggestDrops: 'Più in Calo · 24h',
     recent: 'Recenti',
     remove: 'Rimuovi',
     backToLeaderboard: 'Torna alla classifica',
