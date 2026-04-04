@@ -14,6 +14,7 @@ export interface PatchNote {
 // ── Configuration ──
 const BLIZZARD_NEWS_URL = 'https://hearthstone.blizzard.com/en-us/news';
 const BLIZZARD_API_URL = 'https://hearthstone.blizzard.com/en-us/api/blog/articleList';
+const BLIZZARD_SEARCH_URL = 'https://hearthstone.blizzard.com/en-us/api/search';
 const REQUEST_TIMEOUT = 20000; // 20 seconds
 const MAX_PATCH_NOTES = 15;
 
@@ -25,60 +26,83 @@ const PATCH_NOTE_PATTERNS = [
 ];
 
 /**
- * Convert a Contentful CMS ID to a proper Blizzard news URL
- * Tries multiple URL patterns since Blizzard's URL structure varies
- */
-function buildNewsUrl(uid: string, slug: string): string | null {
-  // Skip non-patch content
-  const fullSlug = `${uid}/${slug}`;
-  if (!PATCH_NOTE_PATTERNS.some(pattern => pattern.test(fullSlug))) {
-    return null;
-  }
-
-  // For Contentful IDs, construct URL with the slug
-  return `${BLIZZARD_NEWS_URL}/${uid}/${slug}`;
-}
-
-/**
- * Fetch patch note URLs from Blizzard's blog API
- * More reliable than HTML scraping since it returns structured JSON
+ * Try to discover patch URLs from multiple sources
+ * Since Contentful API IDs cause 404s, we try search and HTML scraping
  */
 async function discoverPatchNoteUrls(): Promise<string[]> {
   const urls: string[] = [];
 
-  // Try Blizzard's article list API first (returns JSON, more reliable)
+  // Strategy 1: Try Blizzard's search API
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
-    const res = await fetch(BLIZZARD_API_URL, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json',
-      },
-      signal: controller.signal,
-    });
+    // Search for patch notes
+    const searchRes = await fetch(
+      `${BLIZZARD_SEARCH_URL}?query=patch+notes&limit=20&locale=en-us`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json',
+        },
+        signal: controller.signal,
+      }
+    );
 
     clearTimeout(timeoutId);
 
-    if (res.ok) {
-      const articles = await res.json();
-      if (Array.isArray(articles)) {
-        for (const article of articles) {
-          if (article?.uid && article?.slug) {
-            const url = buildNewsUrl(article.uid, article.slug);
-            if (url) {
-              urls.push(url);
-            }
+    if (searchRes.ok) {
+      const searchData = await searchRes.json();
+      if (searchData?.results) {
+        for (const result of searchData.results) {
+          if (result?.url && PATCH_NOTE_PATTERNS.some(p => p.test(result.url))) {
+            const cleanUrl = result.url.split('?')[0]; // Remove query params
+            urls.push(cleanUrl);
           }
         }
       }
     }
   } catch (err) {
-    console.warn('[PatchNotes] API fetch failed, falling back to HTML scraping:', err);
+    console.warn('[PatchNotes] Search API failed:', err);
   }
 
-  // Fallback: scrape URLs from news page HTML
+  // Strategy 2: Try article list API and look for numeric IDs
+  if (urls.length === 0) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
+      const res = await fetch(BLIZZARD_API_URL, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const articles = await res.json();
+        if (Array.isArray(articles)) {
+          for (const article of articles) {
+            // Only accept numeric IDs (Contentful blt... IDs don't work)
+            if (article?.uid && /^\d+$/.test(article.uid) && article?.title) {
+              const title = article.title.toLowerCase();
+              if (PATCH_NOTE_PATTERNS.some(pattern => pattern.test(title))) {
+                const url = `${BLIZZARD_NEWS_URL}/${article.uid}/${article.slug || article.uid}`;
+                urls.push(url);
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[PatchNotes] Article list API failed:', err);
+    }
+  }
+
+  // Strategy 3: Scrape HTML from news page
   if (urls.length === 0) {
     try {
       const controller = new AbortController();
@@ -96,13 +120,11 @@ async function discoverPatchNoteUrls(): Promise<string[]> {
 
       if (res.ok) {
         const html = await res.text();
-        // Match all news URLs (both numeric and Contentful IDs)
-        const linkMatches = html.match(/https:\/\/hearthstone\.blizzard\.com\/en-us\/news\/([^"'\s]+)/g) || [];
+        // Match URLs with numeric IDs only (skip Contentful blt... IDs)
+        const linkMatches = html.match(/https:\/\/hearthstone\.blizzard\.com\/en-us\/news\/\d+\/[\w-]+/g) || [];
         for (const u of linkMatches) {
-          // Clean URL and check if it's a patch note
-          const cleanUrl = u.replace(/["'<>]/g, '');
-          if (PATCH_NOTE_PATTERNS.some(pattern => pattern.test(cleanUrl))) {
-            urls.push(cleanUrl);
+          if (PATCH_NOTE_PATTERNS.some(pattern => pattern.test(u))) {
+            urls.push(u);
           }
         }
       }
@@ -116,6 +138,8 @@ async function discoverPatchNoteUrls(): Promise<string[]> {
   console.log(`[PatchNotes] Discovered ${uniqueUrls.length} patch note URLs`);
   if (uniqueUrls.length > 0) {
     console.log('[PatchNotes] Sample URLs:', uniqueUrls.slice(0, 3));
+  } else {
+    console.warn('[PatchNotes] No working URLs found after trying all strategies');
   }
   return uniqueUrls;
 }
