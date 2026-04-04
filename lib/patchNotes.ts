@@ -66,43 +66,7 @@ async function discoverPatchNoteUrls(): Promise<string[]> {
     console.warn('[PatchNotes] Search API failed:', err);
   }
 
-  // Strategy 2: Try article list API and look for numeric IDs
-  if (urls.length === 0) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
-
-      const res = await fetch(BLIZZARD_API_URL, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
-        },
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (res.ok) {
-        const articles = await res.json();
-        if (Array.isArray(articles)) {
-          for (const article of articles) {
-            // Only accept numeric IDs (Contentful blt... IDs don't work)
-            if (article?.uid && /^\d+$/.test(article.uid) && article?.title) {
-              const title = article.title.toLowerCase();
-              if (PATCH_NOTE_PATTERNS.some(pattern => pattern.test(title))) {
-                const url = `${BLIZZARD_NEWS_URL}/${article.uid}/${article.slug || article.uid}`;
-                urls.push(url);
-              }
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('[PatchNotes] Article list API failed:', err);
-    }
-  }
-
-  // Strategy 3: Scrape HTML from news page
+  // Strategy 2: Scrape HTML from news page and look for embedded JSON data
   if (urls.length === 0) {
     try {
       const controller = new AbortController();
@@ -120,16 +84,57 @@ async function discoverPatchNoteUrls(): Promise<string[]> {
 
       if (res.ok) {
         const html = await res.text();
-        // Match URLs with numeric IDs only (skip Contentful blt... IDs)
-        const linkMatches = html.match(/https:\/\/hearthstone\.blizzard\.com\/en-us\/news\/\d+\/[\w-]+/g) || [];
+        
+        // Try to find embedded JSON data with URLs
+        const jsonMatch = html.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i);
+        if (jsonMatch) {
+          try {
+            const data = JSON.parse(jsonMatch[1]);
+            if (data?.props?.pageProps?.articles) {
+              for (const article of data.props.pageProps.articles) {
+                if (article?.url && PATCH_NOTE_PATTERNS.some(p => p.test(article.url))) {
+                  urls.push(article.url);
+                }
+              }
+            }
+          } catch {
+            console.log('[PatchNotes] Failed to parse embedded JSON');
+          }
+        }
+
+        // Also try regex matching for all news URLs
+        const linkMatches = html.match(/https:\/\/hearthstone\.blizzard\.com\/en-us\/news\/[\w-]+\/[\w-]+/g) || [];
         for (const u of linkMatches) {
           if (PATCH_NOTE_PATTERNS.some(pattern => pattern.test(u))) {
-            urls.push(u);
+            // Only add if it looks like a working URL (has slug, not just ID)
+            const parts = u.split('/');
+            const idPart = parts[parts.length - 2];
+            // Skip Contentful IDs that cause 404s
+            if (idPart && !idPart.startsWith('blt')) {
+              urls.push(u);
+            }
           }
         }
       }
     } catch (err) {
       console.error('[PatchNotes] HTML scraping failed:', err);
+    }
+  }
+
+  // Strategy 3: Use hardcoded recent URLs as last resort
+  if (urls.length === 0) {
+    console.log('[PatchNotes] All discovery strategies failed, using known recent URLs');
+    const knownUrls = [
+      'https://hearthstone.blizzard.com/en-us/news/24267727/35-0-patch-notes',
+      'https://hearthstone.blizzard.com/en-us/news/24242744/34-6-2-patch-notes',
+      'https://hearthstone.blizzard.com/en-us/news/24242740/34-6-patch-notes',
+      'https://hearthstone.blizzard.com/en-us/news/24244400/34-4-2-patch-notes',
+      'https://hearthstone.blizzard.com/en-us/news/24245106/34-4-patch-notes',
+      'https://hearthstone.blizzard.com/en-us/news/24250382/34-2-2-patch-notes',
+      'https://hearthstone.blizzard.com/en-us/news/24244423/34-2-patch-notes-battlegrounds-arena-and-gameplay-updates',
+    ];
+    for (const u of knownUrls) {
+      urls.push(u);
     }
   }
 
