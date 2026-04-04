@@ -146,24 +146,18 @@ export default async function Home({ searchParams }: Props) {
           </p>
         </div>
 
-        {/* Widget sections with dividers */}
-        <section style={{ marginBottom: 28 }}>
+        {/* Widget sections with proper spacing */}
+        <section style={{ marginBottom: 32 }}>
           <RecentSearches locale={locale} />
         </section>
 
-        <div style={{ height: 1, background: 'var(--border-dim)', marginBottom: 28 }} />
-
-        <section style={{ marginBottom: 28 }}>
+        <section style={{ marginBottom: 32 }}>
           <WatchlistWidget locale={locale} region={regions[0]} />
         </section>
 
-        <div style={{ height: 1, background: 'var(--border-dim)', marginBottom: 28 }} />
-
-        <section style={{ marginBottom: 28 }}>
+        <section style={{ marginBottom: 32 }}>
           <TopMoversWidget players={topMovers} fallers={topFallers} locale={locale} region={displayRegion} />
         </section>
-
-        <div style={{ height: 1, background: 'var(--border-dim)', marginBottom: 28 }} />
 
         <section>
           <LeaderboardTable players={players} twitchStatuses={twitchStatuses} locale={locale} region={displayRegion} />
