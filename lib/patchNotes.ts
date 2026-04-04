@@ -277,7 +277,7 @@ export async function fetchPatchNotes(limit = 10): Promise<PatchNote[]> {
       .from('patch_notes')
       .select('*')
       .order('date', { ascending: false })
-      .limit(limit);
+      .limit(limit * 2); // Fetch more to allow deduplication
 
     if (error) throw error;
 
@@ -293,7 +293,19 @@ export async function fetchPatchNotes(limit = 10): Promise<PatchNote[]> {
         };
         return parseDate(b.date) - parseDate(a.date);
       });
-      return sorted;
+
+      // Deduplicate by date - keep the most complete entry for each date
+      const dateMap = new Map<string, PatchNote>();
+      for (const patch of sorted) {
+        const normalizedDate = patch.date;
+        if (!dateMap.has(normalizedDate) ||
+            (patch.battlegrounds_changes?.length > (dateMap.get(normalizedDate)?.battlegrounds_changes?.length || 0))) {
+          dateMap.set(normalizedDate, patch);
+        }
+      }
+
+      // Convert back to array and limit
+      return Array.from(dateMap.values()).slice(0, limit);
     }
 
     return [];
@@ -351,15 +363,27 @@ export async function refreshPatchNotes(): Promise<{ success: boolean; count?: n
       const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       const compositeId = `${slug}-${date.replace(/\//g, '-')}`;
 
-      // Check for duplicates
-      const { data: existing } = await supabaseAdmin
+      // Check for duplicates by ID or date
+      const { data: existingById } = await supabaseAdmin
         .from('patch_notes')
         .select('id')
         .eq('id', compositeId)
         .single();
 
-      if (existing) {
-        console.log('[PatchNotes] Skipping duplicate:', compositeId);
+      if (existingById) {
+        console.log('[PatchNotes] Skipping duplicate (by ID):', compositeId);
+        continue;
+      }
+
+      // Also check for same-date duplicates
+      const { data: existingByDate } = await supabaseAdmin
+        .from('patch_notes')
+        .select('id')
+        .eq('date', date)
+        .single();
+
+      if (existingByDate) {
+        console.log('[PatchNotes] Skipping duplicate (by date):', date);
         continue;
       }
 
