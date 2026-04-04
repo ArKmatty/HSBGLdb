@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Search, TrendingUp, Sun, Moon, FileText } from 'lucide-react';
+import { Search, TrendingUp, Sun, Moon, FileText, Menu, X } from 'lucide-react';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { searchPlayers } from '@/app/actions/player';
 import { EmptyState } from './EmptyState';
@@ -18,6 +18,7 @@ export default function SiteNav() {
   const isHome = pathname === '/';
 
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [searching, setSearching] = useState(false);
@@ -25,6 +26,7 @@ export default function SiteNav() {
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const trapRef = useFocusTrap(searchOpen);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const { debouncedSearch, cancelDebounce } = useDebouncedSearch(200);
 
   useEffect(() => {
@@ -37,6 +39,7 @@ export default function SiteNav() {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setSearchOpen(false);
+        setMobileMenuOpen(false);
         setQuery('');
         setSuggestions([]);
       }
@@ -52,6 +55,17 @@ export default function SiteNav() {
   useEffect(() => {
     const saved = localStorage.getItem('theme') as 'dark' | 'light' | null;
     if (saved) setTheme(saved);
+  }, []);
+
+  // Close mobile menu on resize to desktop
+  useEffect(() => {
+    const handler = () => {
+      if (window.innerWidth >= 768) {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -103,7 +117,7 @@ export default function SiteNav() {
           style={{
             maxWidth: 880,
             margin: '0 auto',
-            padding: '0 20px',
+            padding: '0 16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -119,11 +133,12 @@ export default function SiteNav() {
                 flexShrink: 0,
               }}
             >
-              <Image src="/logo.png" alt="Hearthstone Battlegrounds Leaderboard" width={28} height={28} style={{ objectFit: 'contain', background: 'var(--bg-surface)', borderRadius: 6 }} />
-              <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.02em' }}>HS BG Leaderboard</span>
+              <Image src="/logo.png" alt="HSBGLdb" width={28} height={28} style={{ objectFit: 'contain', background: 'var(--bg-surface)', borderRadius: 6 }} />
+              <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.02em' }}>HSBGLdb</span>
             </Link>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Desktop navigation */}
+          <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {/* Region tabs */}
             <div style={{ display: 'flex', background: 'var(--bg-base)', borderRadius: 6, padding: 2 }}>
               {REGIONS.map(r => (
@@ -244,7 +259,138 @@ export default function SiteNav() {
               {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
             </button>
           </div>
+
+          {/* Mobile menu button */}
+          <button
+            className="show-mobile"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            style={{
+              display: 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 32,
+              height: 32,
+              borderRadius: 6,
+              border: '1px solid var(--border-dim)',
+              background: 'transparent',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              transition: 'all 150ms',
+            }}
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+          >
+            {mobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
+          </button>
         </div>
+
+        {/* Mobile menu dropdown */}
+        {mobileMenuOpen && (
+          <div
+            ref={mobileMenuRef}
+            style={{
+              borderTop: '1px solid var(--border-dim)',
+              background: 'var(--bg-surface)',
+              padding: '12px 16px 16px',
+            }}
+          >
+            {/* Region selector */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>
+                Region
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {REGIONS.map(r => (
+                  <Link
+                    key={r}
+                    href={`/?region=${r}&page=1`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      transition: 'all 150ms',
+                      background: isHome && currentRegion === r ? 'var(--accent)' : 'var(--bg-elevated)',
+                      color: isHome && currentRegion === r ? '#0a0c10' : 'var(--text-primary)',
+                      border: isHome && currentRegion === r ? '1px solid var(--accent)' : '1px solid var(--border-dim)',
+                    }}
+                  >
+                    {r}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick actions */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button
+                onClick={() => {
+                  setSearchOpen(true);
+                  setMobileMenuOpen(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 12px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border-dim)',
+                  background: 'var(--bg-elevated)',
+                  color: 'var(--text-primary)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 150ms',
+                }}
+              >
+                <Search size={14} />
+                Search Players
+              </button>
+
+              <Link
+                href="/patch-notes"
+                onClick={() => setMobileMenuOpen(false)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 12px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border-dim)',
+                  background: 'var(--bg-elevated)',
+                  color: 'var(--text-primary)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  transition: 'all 150ms',
+                }}
+              >
+                <FileText size={14} />
+                Patch Notes
+              </Link>
+
+              <button
+                onClick={toggleTheme}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 12px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border-dim)',
+                  background: 'var(--bg-elevated)',
+                  color: 'var(--text-primary)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 150ms',
+                }}
+              >
+                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+                {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Search modal */}
@@ -325,7 +471,7 @@ export default function SiteNav() {
                 onKeyDown={e => {
                   if (e.key === 'ArrowDown') {
                     e.preventDefault();
-                    setActiveSuggestionIndex(prev => 
+                    setActiveSuggestionIndex(prev =>
                       prev < suggestions.length - 1 ? prev + 1 : prev
                     );
                   } else if (e.key === 'ArrowUp') {
