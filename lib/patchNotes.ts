@@ -54,7 +54,13 @@ async function discoverPatchNoteUrls(): Promise<string[]> {
             const title = article.title.toLowerCase();
             // Only include patch-related articles
             if (PATCH_NOTE_PATTERNS.some(pattern => pattern.test(title))) {
-              const url = `${BLIZZARD_NEWS_URL}/${article.uid}/${article.slug || article.uid}`;
+              // Validate URL format - skip Contentful CMS IDs (blt...) that cause 404s
+              const uid = article.uid;
+              if (uid.startsWith('blt')) {
+                console.log(`[PatchNotes] Skipping Contentful ID: ${uid}`);
+                continue;
+              }
+              const url = `${BLIZZARD_NEWS_URL}/${uid}/${article.slug || article.uid}`;
               urls.push(url);
             }
           }
@@ -83,8 +89,8 @@ async function discoverPatchNoteUrls(): Promise<string[]> {
 
       if (res.ok) {
         const html = await res.text();
-        // Match both numeric ID URLs and slug-based URLs
-        const linkMatches = html.match(/https:\/\/hearthstone\.blizzard\.com\/en-us\/news\/\d+\/[\w-]+/g) || [];
+        // Match numeric ID URLs only (skip Contentful blt... IDs)
+        const linkMatches = html.match(/https:\/\/hearthstone\.blizzard\.com\/en-us\/news\/(\d+)\/[\w-]+/g) || [];
         for (const u of linkMatches) {
           if (PATCH_NOTE_PATTERNS.some(pattern => pattern.test(u))) {
             urls.push(u);

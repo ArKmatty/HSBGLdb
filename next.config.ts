@@ -12,6 +12,22 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '**.blizzard.cn',
       },
+      {
+        protocol: 'https',
+        hostname: '**.akamaihd.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'bnetcmsus-a.akamaihd.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'bnetcmsap-a.akamaihd.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'bnetcmeu-a.akamaihd.net',
+      },
     ],
   },
   // Optimize package imports for better tree-shaking
