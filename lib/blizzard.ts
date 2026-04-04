@@ -4,15 +4,15 @@ import { unstable_cache } from 'next/cache';
 import type { BlizzardLeaderboardRow, BlizzardLeaderboardData, BlizzardPlayerLive, CnLeaderboardResponse, LeaderboardHistoryRecord } from './types';
 
 const REVALIDATE_SECONDS = 60;
-const CACHE_LEADERBOARD_SECONDS = 300; // 5 minutes (was 60s) - reduces cache misses
+const CACHE_LEADERBOARD_SECONDS = 180; // 3 minutes (reduced from 5min) - better balance of freshness vs performance
 const CACHE_PLAYER_LIVE_SECONDS = 120;
 const CN_API_BASE = 'https://webapi.blizzard.cn/hs-rank-api-server/api';
 const CN_SEASON_ID = parseInt(process.env.CN_SEASON_ID || '17', 10);
 
 // Cache durations (in seconds)
-// - Leaderboard: 300s (5min) - balances freshness with TTFB performance
+// - Leaderboard: 180s (3min) - balances freshness with TTFB performance
 // - Player live stats: 120s (moderate freshness acceptable)
-// - Top movers/fallers: 1800s (30min, computed stats change slowly)
+// - Top movers/fallers: 600s (10min, computed stats change slowly)
 
 function isValidLeaderboardPage(data: unknown): data is BlizzardLeaderboardData {
   return typeof data === 'object' && data !== null;

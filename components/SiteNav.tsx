@@ -145,6 +145,7 @@ export default function SiteNav() {
                 <Link
                   key={r}
                   href={`/?region=${r}&page=1`}
+                  prefetch={true}
                   style={{
                     padding: '6px 12px',
                     borderRadius: 4,
@@ -303,6 +304,7 @@ export default function SiteNav() {
                   <Link
                     key={r}
                     href={`/?region=${r}&page=1`}
+                    prefetch={true}
                     onClick={() => setMobileMenuOpen(false)}
                     style={{
                       padding: '8px 16px',

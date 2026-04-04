@@ -12,6 +12,9 @@ import WatchlistWidget from '../components/WatchlistWidget';
 import { getTwitchStatusesForLeaderboard } from './actions/twitch';
 import { detectLocale, translations } from '@/lib/i18n';
 
+// Prefetch all regions on home page load for faster navigation
+export const dynamic = 'force-dynamic';
+
 type Props = {
   searchParams: Promise<{ region?: string | string[]; page?: string }>;
 };

@@ -181,5 +181,5 @@ export const getMoversAndFallers = unstable_cache(
     return { movers, fallers };
   },
   ['movers-fallers-combined-cache'],
-  { revalidate: 600, tags: ['movers', 'fallers'] }
+  { revalidate: 600, tags: ['movers', 'fallers'] } // 10 minutes
 );
