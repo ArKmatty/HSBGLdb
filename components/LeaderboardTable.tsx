@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp, TrendingDown, Minus, ChevronUp, ChevronDown, Crown } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, ChevronUp, ChevronDown, Crown, X } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
 import { translations } from "@/lib/i18n";
 import { EmptyState } from "./EmptyState";
@@ -98,6 +98,10 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
         type="no-data"
         title="No players found"
         description={`No players match "${searchTerm}". Try a different search term.`}
+        action={{
+          label: 'Clear Search',
+          onClick: () => setSearchTerm(''),
+        }}
       />
     );
   }
@@ -120,34 +124,73 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
     <div>
       {/* Search */}
       <div style={{ marginBottom: 20 }}>
-        <input
-          type="text"
-          placeholder={t.searchPlaceholder}
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          aria-label={t.searchPlaceholder}
+        <div
           style={{
-            width: '100%',
-            padding: '12px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '0 14px',
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-mid)',
             borderRadius: 12,
-            color: 'var(--text-primary)',
-            fontSize: 14,
-            fontWeight: 500,
-            fontFamily: 'inherit',
-            outline: 'none',
             transition: 'border-color 150ms, box-shadow 150ms',
           }}
           onFocus={e => {
-            e.target.style.borderColor = 'var(--accent)';
-            e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)';
+            e.currentTarget.style.borderColor = 'var(--accent)';
+            e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-glow)';
           }}
           onBlur={e => {
-            e.target.style.borderColor = 'var(--border-mid)';
-            e.target.style.boxShadow = 'none';
+            e.currentTarget.style.borderColor = 'var(--border-mid)';
+            e.currentTarget.style.boxShadow = 'none';
           }}
-        />
+        >
+          <input
+            type="text"
+            placeholder={t.searchPlaceholder}
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            aria-label={t.searchPlaceholder}
+            style={{
+              flex: 1,
+              padding: '12px 0',
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-primary)',
+              fontSize: 14,
+              fontWeight: 500,
+              fontFamily: 'inherit',
+              outline: 'none',
+            }}
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 4,
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                borderRadius: 4,
+                transition: 'color 150ms, background-color 150ms',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = 'var(--text-primary)';
+                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = 'var(--text-muted)';
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+              aria-label="Clear search"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Meta row */}
@@ -226,6 +269,17 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
                     style={{
                       borderTop: idx === 0 ? 'none' : '1px solid var(--border-dim)',
                       background: isTop3 ? 'rgba(232,168,56,0.05)' : 'transparent',
+                      transition: 'background-color 150ms ease',
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.background = isTop3
+                        ? 'rgba(232,168,56,0.12)'
+                        : 'var(--bg-elevated)';
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.background = isTop3
+                        ? 'rgba(232,168,56,0.05)'
+                        : 'transparent';
                     }}
                   >
                     {/* Rank */}

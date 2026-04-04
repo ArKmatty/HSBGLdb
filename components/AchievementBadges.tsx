@@ -1,4 +1,5 @@
-import { Trophy, Zap, Flame, Target } from 'lucide-react';
+import { Trophy, Zap, Flame, Target, Lock } from 'lucide-react';
+import { useState } from 'react';
 
 interface Achievement {
   id: string;
@@ -52,6 +53,7 @@ export default function AchievementBadges({ currentRank, gamesPlayed, gain7d }: 
   ];
 
   const unlockedCount = achievements.filter(a => a.unlocked).length;
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   return (
     <div style={{ marginBottom: 28 }}>
@@ -68,7 +70,7 @@ export default function AchievementBadges({ currentRank, gamesPlayed, gain7d }: 
           </span>
         </div>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, position: 'relative' }}>
         {achievements.map(a => (
           <div
             key={a.id}
@@ -85,24 +87,67 @@ export default function AchievementBadges({ currentRank, gamesPlayed, gain7d }: 
               color: a.unlocked ? a.color : 'var(--text-muted)',
               fontSize: 11,
               fontWeight: 600,
-              opacity: a.unlocked ? 1 : 0.5,
+              opacity: a.unlocked ? 1 : 0.6,
               transition: 'opacity 150ms, transform 150ms, box-shadow 150ms',
-              cursor: 'default',
+              cursor: a.unlocked ? 'default' : 'help',
               boxShadow: a.unlocked ? `0 0 8px ${a.color}20` : 'none',
+              position: 'relative',
             }}
             onMouseEnter={e => {
+              setHoveredId(a.id);
               if (a.unlocked) {
                 e.currentTarget.style.transform = 'translateY(-1px)';
                 e.currentTarget.style.boxShadow = `0 2px 12px ${a.color}30`;
               }
             }}
             onMouseLeave={e => {
+              setHoveredId(null);
               e.currentTarget.style.transform = 'translateY(0)';
               e.currentTarget.style.boxShadow = a.unlocked ? `0 0 8px ${a.color}20` : 'none';
             }}
           >
+            {!a.unlocked && <Lock size={10} style={{ opacity: 0.7 }} />}
             {a.icon}
             {a.label}
+
+            {/* Tooltip for locked achievements */}
+            {!a.unlocked && hoveredId === a.id && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 'calc(100% + 8px)',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  padding: '6px 10px',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-mid)',
+                  borderRadius: 6,
+                  fontSize: 10,
+                  fontWeight: 500,
+                  color: 'var(--text-secondary)',
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  zIndex: 10,
+                  pointerEvents: 'none',
+                }}
+              >
+                🔒 {a.hint}
+                {/* Arrow */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 0,
+                    height: 0,
+                    borderLeft: '5px solid transparent',
+                    borderRight: '5px solid transparent',
+                    borderTop: `5px solid var(--border-mid)`,
+                  }}
+                />
+              </div>
+            )}
           </div>
         ))}
       </div>

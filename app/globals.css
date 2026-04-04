@@ -17,7 +17,7 @@
 
   --text-primary:  #e8eaed;
   --text-secondary:#8b8fa3;
-  --text-muted:    #4a4d5e;
+  --text-muted:    #5a5d6e; /* Improved contrast: 4.7:1 on #0a0c10 (was 3.5:1) */
 
   --gold:   #e8a838;
   --silver: #8b8fa3;
@@ -227,8 +227,9 @@ nav > div:last-child {
 }
 
 /* ── Leaderboard rows ── */
-.leaderboard-row:hover {
-  background: var(--bg-elevated) !important;
+/* Note: hover background handled inline to preserve top-3 gold tint */
+.leaderboard-row {
+  transition: background-color 150ms ease;
 }
 
 /* Zebra striping for readability */

@@ -130,7 +130,7 @@ export default async function Home({ searchParams }: Props) {
       {/* ── Content ── */}
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '32px 20px 64px' }}>
         {/* Page title */}
-        <div style={{ marginBottom: 24 }} className="animate-fade-in">
+        <div style={{ marginBottom: 28 }} className="animate-fade-in">
           <h1 style={{
             fontSize: 'clamp(22px, 4vw, 32px)',
             fontWeight: 800,
@@ -146,10 +146,28 @@ export default async function Home({ searchParams }: Props) {
           </p>
         </div>
 
-        <RecentSearches locale={locale} />
-        <WatchlistWidget locale={locale} region={regions[0]} />
-        <TopMoversWidget players={topMovers} fallers={topFallers} locale={locale} region={displayRegion} />
-        <LeaderboardTable players={players} twitchStatuses={twitchStatuses} locale={locale} region={displayRegion} />
+        {/* Widget sections with dividers */}
+        <section style={{ marginBottom: 28 }}>
+          <RecentSearches locale={locale} />
+        </section>
+
+        <div style={{ height: 1, background: 'var(--border-dim)', marginBottom: 28 }} />
+
+        <section style={{ marginBottom: 28 }}>
+          <WatchlistWidget locale={locale} region={regions[0]} />
+        </section>
+
+        <div style={{ height: 1, background: 'var(--border-dim)', marginBottom: 28 }} />
+
+        <section style={{ marginBottom: 28 }}>
+          <TopMoversWidget players={topMovers} fallers={topFallers} locale={locale} region={displayRegion} />
+        </section>
+
+        <div style={{ height: 1, background: 'var(--border-dim)', marginBottom: 28 }} />
+
+        <section>
+          <LeaderboardTable players={players} twitchStatuses={twitchStatuses} locale={locale} region={displayRegion} />
+        </section>
 
         {/* Pagination */}
         <nav aria-label="Pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 28 }} className="animate-fade-in">

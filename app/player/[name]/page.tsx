@@ -216,14 +216,15 @@ export default function PlayerPage() {
   return (
     <main style={{ minHeight: '100dvh', background: 'var(--bg-base)' }}>
 
+      {/* Accent line below sticky navbar */}
       <div style={{
         position: 'fixed',
-        top: 0,
+        top: 56, // Height of the sticky navbar
         left: 0,
         right: 0,
         height: 1,
         background: 'linear-gradient(90deg, transparent, var(--accent), transparent)',
-        zIndex: 100,
+        zIndex: 49, // Below navbar (zIndex: 50)
       }} />
 
       <div style={{ maxWidth: 880, margin: '0 auto', padding: '20px 20px 64px' }}>

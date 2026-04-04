@@ -6,9 +6,13 @@ interface EmptyStateProps {
   type: "no-results" | "no-data" | "error" | "offline";
   title: string;
   description?: string;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
-export function EmptyState({ type, title, description }: EmptyStateProps) {
+export function EmptyState({ type, title, description, action }: EmptyStateProps) {
   const icons = {
     "no-results": SearchX,
     "no-data": FileQuestion,
@@ -39,6 +43,33 @@ export function EmptyState({ type, title, description }: EmptyStateProps) {
         <span style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 280 }}>
           {description}
         </span>
+      )}
+      {action && (
+        <button
+          onClick={action.onClick}
+          style={{
+            marginTop: 8,
+            padding: '8px 16px',
+            borderRadius: 6,
+            border: '1px solid var(--border-mid)',
+            background: 'var(--bg-elevated)',
+            color: 'var(--text-primary)',
+            fontSize: 12,
+            fontWeight: 500,
+            cursor: 'pointer',
+            transition: 'all 150ms',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = 'var(--accent)';
+            e.currentTarget.style.background = 'var(--accent-dim)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = 'var(--border-mid)';
+            e.currentTarget.style.background = 'var(--bg-elevated)';
+          }}
+        >
+          {action.label}
+        </button>
       )}
     </div>
   );
