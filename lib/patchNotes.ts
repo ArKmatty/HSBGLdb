@@ -25,6 +25,21 @@ const PATCH_NOTE_PATTERNS = [
 ];
 
 /**
+ * Convert a Contentful CMS ID to a proper Blizzard news URL
+ * Tries multiple URL patterns since Blizzard's URL structure varies
+ */
+function buildNewsUrl(uid: string, slug: string): string | null {
+  // Skip non-patch content
+  const fullSlug = `${uid}/${slug}`;
+  if (!PATCH_NOTE_PATTERNS.some(pattern => pattern.test(fullSlug))) {
+    return null;
+  }
+
+  // For Contentful IDs, construct URL with the slug
+  return `${BLIZZARD_NEWS_URL}/${uid}/${slug}`;
+}
+
+/**
  * Fetch patch note URLs from Blizzard's blog API
  * More reliable than HTML scraping since it returns structured JSON
  */
@@ -50,17 +65,9 @@ async function discoverPatchNoteUrls(): Promise<string[]> {
       const articles = await res.json();
       if (Array.isArray(articles)) {
         for (const article of articles) {
-          if (article?.uid && article?.title) {
-            const title = article.title.toLowerCase();
-            // Only include patch-related articles
-            if (PATCH_NOTE_PATTERNS.some(pattern => pattern.test(title))) {
-              // Validate URL format - skip Contentful CMS IDs (blt...) that cause 404s
-              const uid = article.uid;
-              if (uid.startsWith('blt')) {
-                console.log(`[PatchNotes] Skipping Contentful ID: ${uid}`);
-                continue;
-              }
-              const url = `${BLIZZARD_NEWS_URL}/${uid}/${article.slug || article.uid}`;
+          if (article?.uid && article?.slug) {
+            const url = buildNewsUrl(article.uid, article.slug);
+            if (url) {
               urls.push(url);
             }
           }
@@ -89,11 +96,13 @@ async function discoverPatchNoteUrls(): Promise<string[]> {
 
       if (res.ok) {
         const html = await res.text();
-        // Match numeric ID URLs only (skip Contentful blt... IDs)
-        const linkMatches = html.match(/https:\/\/hearthstone\.blizzard\.com\/en-us\/news\/(\d+)\/[\w-]+/g) || [];
+        // Match all news URLs (both numeric and Contentful IDs)
+        const linkMatches = html.match(/https:\/\/hearthstone\.blizzard\.com\/en-us\/news\/([^"'\s]+)/g) || [];
         for (const u of linkMatches) {
-          if (PATCH_NOTE_PATTERNS.some(pattern => pattern.test(u))) {
-            urls.push(u);
+          // Clean URL and check if it's a patch note
+          const cleanUrl = u.replace(/["'<>]/g, '');
+          if (PATCH_NOTE_PATTERNS.some(pattern => pattern.test(cleanUrl))) {
+            urls.push(cleanUrl);
           }
         }
       }
@@ -105,6 +114,9 @@ async function discoverPatchNoteUrls(): Promise<string[]> {
   // Remove duplicates and limit
   const uniqueUrls = [...new Set(urls)].slice(0, MAX_PATCH_NOTES);
   console.log(`[PatchNotes] Discovered ${uniqueUrls.length} patch note URLs`);
+  if (uniqueUrls.length > 0) {
+    console.log('[PatchNotes] Sample URLs:', uniqueUrls.slice(0, 3));
+  }
   return uniqueUrls;
 }
 
