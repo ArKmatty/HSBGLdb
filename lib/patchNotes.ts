@@ -125,6 +125,7 @@ async function discoverPatchNoteUrls(): Promise<string[]> {
   if (urls.length === 0) {
     console.log('[PatchNotes] All discovery strategies failed, using known recent URLs');
     const knownUrls = [
+      'https://hearthstone.blizzard.com/en-us/news/24271854/35-0-3-patch-notes',
       'https://hearthstone.blizzard.com/en-us/news/24267727/35-0-patch-notes',
       'https://hearthstone.blizzard.com/en-us/news/24242744/34-6-2-patch-notes',
       'https://hearthstone.blizzard.com/en-us/news/24242740/34-6-patch-notes',
