@@ -147,10 +147,11 @@ Deployed on **Vercel**. Pushes to `main` branch trigger automatic deployments.
 
 ### Caching Strategy
 
-- **Leaderboard**: 300s (5 minutes) via `unstable_cache` with tags
+- **Leaderboard**: 180s (3 minutes) via `unstable_cache` with tags
 - **Player live stats**: 120s (2 minutes)
 - **Top movers/fallers**: 1800s (30 minutes, computed stats change slowly)
 - **External API calls**: `fetch` with `{ next: { revalidate: SECONDS } }`
+- **Retry logic**: Exponential backoff (300ms → 600ms → 1200ms) for unreliable API calls
 - **In-memory maps** for rate-limited operations (admin login throttling)
 
 ### Error Handling
