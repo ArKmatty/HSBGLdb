@@ -9,6 +9,11 @@ const CACHE_PLAYER_LIVE_SECONDS = 120;
 const CN_API_BASE = 'https://webapi.blizzard.cn/hs-rank-api-server/api';
 const CN_SEASON_ID = parseInt(process.env.CN_SEASON_ID || '17', 10);
 
+// In-memory cache for player live stats to avoid redundant lookups within the cache window
+// Key: lowercase player name, Value: { result, expiry }
+const playerLiveCache = new Map<string, { result: BlizzardPlayerLive | null; expiry: number }>();
+const PLAYER_LIVE_CACHE_TTL_MS = CACHE_PLAYER_LIVE_SECONDS * 1000;
+
 // Cache durations (in seconds)
 // - Leaderboard: 180s (3min) - balances freshness with TTFB performance
 // - Player live stats: 120s (moderate freshness acceptable)
@@ -276,9 +281,17 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
 
 export const getPlayerLiveStats = unstable_cache(
   async (name: string, preferredRegion?: string | null): Promise<BlizzardPlayerLive | null> => {
+    // Check in-memory cache first
+    const cacheKey = name.toLowerCase();
+    const now = Date.now();
+    const cached = playerLiveCache.get(cacheKey);
+    if (cached && cached.expiry > now) {
+      return cached.result;
+    }
+
     const regions = ['EU', 'US', 'AP', 'CN'];
     const PREFERRED_PAGES = 10;
-    const OTHER_PAGES = 5;
+    const OTHER_PAGES = 3; // Reduced from 5: most players won't be in non-preferred regions
 
     // If no preferred region provided, try to get from recent history
     if (!preferredRegion) {
@@ -359,13 +372,16 @@ export const getPlayerLiveStats = unstable_cache(
         );
 
         if (match) {
-          return { ...match, region };
+          const result = { ...match, region };
+          playerLiveCache.set(cacheKey, { result, expiry: now + PLAYER_LIVE_CACHE_TTL_MS });
+          return result;
         }
       } catch (e) {
         console.error(`[Blizzard] Error scanning ${region}:`, e);
       }
     }
 
+    playerLiveCache.set(cacheKey, { result: null, expiry: now + PLAYER_LIVE_CACHE_TTL_MS });
     return null;
   },
   ['player-live'],

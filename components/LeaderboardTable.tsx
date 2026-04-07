@@ -8,6 +8,7 @@ import type { Locale } from "@/lib/i18n";
 import { translations } from "@/lib/i18n";
 import { EmptyState } from "./EmptyState";
 import { getTwitchStatusesForLeaderboard } from "@/app/actions/twitch";
+import { memo } from "react";
 
 interface Player {
   rank: number;
@@ -19,6 +20,146 @@ interface Player {
 type SortKey = 'rank' | 'name' | 'mmr' | 'delta';
 
 const RANK_COLORS: Record<number, string> = { 1: '#e8a838', 2: '#8b8fa3', 3: '#a0722a' };
+
+// Memoized row component to prevent unnecessary re-renders when Twitch statuses update
+const LeaderboardRow = memo(function LeaderboardRow({
+  player,
+  idx,
+  twitchData,
+  region,
+}: {
+  player: Player;
+  idx: number;
+  twitchData?: { isLive: boolean; twitchUsername?: string; title?: string; viewerCount?: number };
+  region?: string;
+}) {
+  const diff = player.lastRating ? player.rating - player.lastRating : 0;
+  const isLive = twitchData?.isLive;
+  const rankColor = RANK_COLORS[player.rank];
+  const isTop3 = player.rank <= 3;
+
+  return (
+    <tr
+      className="leaderboard-row"
+      style={{
+        borderTop: idx === 0 ? 'none' : '1px solid var(--border-dim)',
+        background: isTop3 ? 'rgba(232,168,56,0.05)' : 'transparent',
+        transition: 'background-color 150ms ease',
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLElement).style.background = isTop3
+          ? 'rgba(232,168,56,0.12)'
+          : 'var(--bg-elevated)';
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLElement).style.background = isTop3
+          ? 'rgba(232,168,56,0.05)'
+          : 'transparent';
+      }}
+    >
+      {/* Rank */}
+      <td style={{ padding: '12px 16px', width: 60 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {player.rank <= 3 && (
+            <Crown
+              size={14}
+              style={{
+                color: rankColor,
+                flexShrink: 0,
+              }}
+            />
+          )}
+          <span style={{
+            fontSize: 13,
+            fontWeight: 800,
+            fontVariantNumeric: 'tabular-nums',
+            color: rankColor || 'var(--text-muted)',
+          }}>
+            #{player.rank}
+          </span>
+        </div>
+      </td>
+
+      {/* Player */}
+      <td style={{ padding: '12px 16px', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          <Link
+            href={`/player/${player.accountid}?region=${region || 'EU'}`}
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              transition: 'color 150ms',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+            }}
+            onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--accent)')}
+            onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--text-primary)')}
+          >
+            {player.accountid}
+          </Link>
+          {isLive && (
+            <a
+              href={`https://twitch.tv/${twitchData!.twitchUsername}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '6px 10px',
+                borderRadius: 6,
+                background: 'rgba(145,70,255,0.15)',
+                border: '1px solid rgba(145,70,255,0.3)',
+                fontSize: 10,
+                fontWeight: 700,
+                color: '#9146FF',
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+                flexShrink: 0,
+                boxShadow: '0 0 12px rgba(145,70,255,0.2)',
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M4.265 1 2 5.385v13.229h4.504V23l4.313-4.386h3.616L21.736 11.3V1H4.265zm2.382 2.308h12.698v7.269l-4.504 4.634h-4.313L7.27 19.304v-4.093H6.647V3.308zm3.656 3.23v4.053h2.156V6.538H10.303zm5.66 0v4.053h2.157V6.538h-2.157z"/>
+              </svg>
+              Live
+            </a>
+          )}
+        </div>
+      </td>
+
+      {/* MMR */}
+      <td style={{ padding: '12px 16px' }}>
+        <span style={{
+          fontSize: 14,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          color: 'var(--accent)',
+        }}>
+          {player.rating.toLocaleString()}
+        </span>
+      </td>
+
+      {/* Delta */}
+      <td className="hide-mobile" style={{ padding: '12px 16px', textAlign: 'center' }}>
+        {diff > 0 ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: 'var(--green)' }}>
+            <TrendingUp size={13} /> +{diff}
+          </span>
+        ) : diff < 0 ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: 'var(--red)' }}>
+            <TrendingDown size={13} /> {diff}
+          </span>
+        ) : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+            <Minus size={13} color="var(--text-muted)" />
+          </span>
+        )}
+      </td>
+    </tr>
+  );
+});
 
 export default function LeaderboardTable({ players, twitchStatuses: initialTwitchStatuses = {}, locale, region }: { players: Player[]; twitchStatuses?: Record<string, { isLive: boolean; twitchUsername?: string; title?: string; viewerCount?: number }>; locale: Locale; region?: string }) {
   const [twitchStatuses, setTwitchStatuses] = useState(initialTwitchStatuses);
@@ -256,133 +397,15 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
             </thead>
             <tbody>
               {sorted.map((player, idx) => {
-                const diff = player.lastRating ? player.rating - player.lastRating : 0;
                 const twitchData = twitchStatuses[player.accountid.toLowerCase()];
-                const isLive = twitchData?.isLive;
-                const rankColor = RANK_COLORS[player.rank];
-                const isTop3 = player.rank <= 3;
-
                 return (
-                  <tr
+                  <LeaderboardRow
                     key={`${player.accountid}-${player.rank}`}
-                    className="leaderboard-row"
-                    style={{
-                      borderTop: idx === 0 ? 'none' : '1px solid var(--border-dim)',
-                      background: isTop3 ? 'rgba(232,168,56,0.05)' : 'transparent',
-                      transition: 'background-color 150ms ease',
-                    }}
-                    onMouseEnter={e => {
-                      (e.currentTarget as HTMLElement).style.background = isTop3
-                        ? 'rgba(232,168,56,0.12)'
-                        : 'var(--bg-elevated)';
-                    }}
-                    onMouseLeave={e => {
-                      (e.currentTarget as HTMLElement).style.background = isTop3
-                        ? 'rgba(232,168,56,0.05)'
-                        : 'transparent';
-                    }}
-                  >
-                    {/* Rank */}
-                    <td style={{ padding: '12px 16px', width: 60 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {player.rank <= 3 && (
-                          <Crown 
-                            size={14} 
-                            style={{ 
-                              color: rankColor,
-                              flexShrink: 0,
-                            }} 
-                          />
-                        )}
-                        <span style={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          fontVariantNumeric: 'tabular-nums',
-                          color: rankColor || 'var(--text-muted)',
-                        }}>
-                          #{player.rank}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Player */}
-                    <td style={{ padding: '12px 16px', minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                        <Link
-                          href={`/player/${player.accountid}?region=${region || 'EU'}`}
-                          style={{
-                            fontSize: 14,
-                            fontWeight: 600,
-                            color: 'var(--text-primary)',
-                            transition: 'color 150ms',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            minWidth: 0,
-                          }}
-                          onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--accent)')}
-                          onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--text-primary)')}
-                        >
-                          {player.accountid}
-                        </Link>
-                        {isLive && (
-                          <a
-                            href={`https://twitch.tv/${twitchData.twitchUsername}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 4,
-                              padding: '6px 10px',
-                              borderRadius: 6,
-                              background: 'rgba(145,70,255,0.15)',
-                              border: '1px solid rgba(145,70,255,0.3)',
-                              fontSize: 10,
-                              fontWeight: 700,
-                              color: '#9146FF',
-                              letterSpacing: '0.05em',
-                              textTransform: 'uppercase',
-                              flexShrink: 0,
-                              boxShadow: '0 0 12px rgba(145,70,255,0.2)',
-                            }}
-                          >
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                              <path d="M4.265 1 2 5.385v13.229h4.504V23l4.313-4.386h3.616L21.736 11.3V1H4.265zm2.382 2.308h12.698v7.269l-4.504 4.634h-4.313L7.27 19.304v-4.093H6.647V3.308zm3.656 3.23v4.053h2.156V6.538H10.303zm5.66 0v4.053h2.157V6.538h-2.157z"/>
-                            </svg>
-                            Live
-                          </a>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* MMR */}
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        fontVariantNumeric: 'tabular-nums',
-                        color: 'var(--accent)',
-                      }}>
-                        {player.rating.toLocaleString()}
-                      </span>
-                    </td>
-
-                    {/* Delta */}
-                    <td className="hide-mobile" style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      {diff > 0 ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: 'var(--green)' }}>
-                          <TrendingUp size={13} /> +{diff}
-                        </span>
-                      ) : diff < 0 ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: 'var(--red)' }}>
-                          <TrendingDown size={13} /> {diff}
-                        </span>
-                      ) : (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-                          <Minus size={13} color="var(--text-muted)" />
-                        </span>
-                      )}
-                    </td>
-                  </tr>
+                    player={player}
+                    idx={idx}
+                    twitchData={twitchData}
+                    region={region}
+                  />
                 );
               })}
             </tbody>

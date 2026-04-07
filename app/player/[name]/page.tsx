@@ -137,22 +137,30 @@ export default function PlayerPage() {
   const localeStr = locale === 'it' ? 'it-IT' : 'en-US';
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchAll() {
       setLoadingHistory(true);
       setLoadingLive(true);
       setError(null);
 
-      let lastRating = 0;
-      let lastDate = "";
       let playerRegion: string | undefined = urlRegion;
 
-      // Step 1: Fetch live data first to determine the correct region
-      // This prevents region collision when the same username exists in multiple regions (e.g., US + CN)
-      // Pass urlRegion to prioritize the region from the URL
-      const lResult = await getPlayerLive(decodedName, lastRating, lastDate, urlRegion).catch((err) => {
-        console.error("Live fetch error:", err);
-        return { success: false, live: null };
-      });
+      // Step 1: Fetch live data and Twitch data in parallel
+      // Twitch is independent of region, so we can start it immediately
+      // Live data determines the region for history fetching
+      const [lResult, tData] = await Promise.all([
+        getPlayerLive(decodedName, undefined, undefined, urlRegion).catch((err) => {
+          console.error("Live fetch error:", err);
+          return { success: false, live: null };
+        }),
+        getTwitchStatusForPlayer(decodedName).catch((e) => {
+          console.error("Twitch server fetch error:", e);
+          return null;
+        }),
+      ]);
+
+      if (cancelled) return;
 
       if (lResult.success && lResult.live) {
         setLiveData(lResult.live);
@@ -163,6 +171,10 @@ export default function PlayerPage() {
       }
       setLoadingLive(false);
 
+      if (tData) {
+        setTwitchData(tData);
+      }
+
       // Step 2: Fetch history with the determined region and time range
       // This ensures we only get history for the correct region, avoiding cross-region data pollution
       // Pass timeRange to optimize the query limit
@@ -170,6 +182,8 @@ export default function PlayerPage() {
         console.error("History fetch error:", err);
         return { success: false, history: [], error: 'Database error' };
       });
+
+      if (cancelled) return;
 
       if (hResult.success && hResult.history) {
         const history = hResult.history;
@@ -183,8 +197,6 @@ export default function PlayerPage() {
 
         if (history.length > 0) {
           const last = history[history.length - 1];
-          lastRating = last.rating;
-          lastDate = last.created_at;
           setLatestSnapshotRating(last.rating);
         }
 
@@ -194,20 +206,11 @@ export default function PlayerPage() {
         setError(hResult.error || t.databaseError);
       }
       setLoadingHistory(false);
-
-      // Step 3: Fetch Twitch data (independent of region)
-      const tData = await getTwitchStatusForPlayer(decodedName).catch((e) => {
-        console.error("Twitch server fetch error:", e);
-        return null;
-      });
-
-      if (tData) {
-        setTwitchData(tData);
-      }
     }
 
     fetchAll();
-  }, [decodedName, localeStr, t, urlRegion]);
+    return () => { cancelled = true; };
+  }, [decodedName, localeStr, t, urlRegion, timeRange]);
 
   const currentRating = liveData?.rating ?? latestSnapshotRating ?? 0;
   const isNewPeak = currentRating > stats.peak && stats.peak > 0;

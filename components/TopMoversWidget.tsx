@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, ChevronRight } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import type { Locale } from '@/lib/i18n';
 import { translations } from '@/lib/i18n';
 
@@ -11,6 +11,85 @@ interface Mover {
   diff: number;
   rating: number;
 }
+
+// Memoized mover card to prevent unnecessary re-renders
+const MoverCard = memo(function MoverCard({
+  player,
+  idx,
+  region,
+  type,
+  accentColor,
+  borderColor,
+}: {
+  player: Mover;
+  idx: number;
+  region: string;
+  type: 'mover' | 'faller';
+  accentColor: string;
+  borderColor: string;
+}) {
+  return (
+    <Link
+      href={`/player/${player.accountid}?region=${region}`}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        padding: '12px 14px',
+        minWidth: 140,
+        maxWidth: 140,
+        background: 'var(--gradient-card)',
+        border: '1px solid var(--border-dim)',
+        borderLeft: `3px solid ${idx === 0 ? borderColor : 'transparent'}`,
+        borderRadius: 8,
+        cursor: 'pointer',
+        transition: 'border-color 150ms, box-shadow 150ms, transform 150ms',
+        boxShadow: 'var(--shadow-sm)',
+        flexShrink: 0,
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderTopColor = 'var(--border-mid)';
+        e.currentTarget.style.borderRightColor = 'var(--border-mid)';
+        e.currentTarget.style.borderBottomColor = 'var(--border-mid)';
+        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+        e.currentTarget.style.transform = 'translateY(-2px)';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderTopColor = 'var(--border-dim)';
+        e.currentTarget.style.borderRightColor = 'var(--border-dim)';
+        e.currentTarget.style.borderBottomColor = 'var(--border-dim)';
+        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{
+          fontSize: 10,
+          fontWeight: 600,
+          color: idx < 3 ? accentColor : 'var(--text-muted)',
+        }}>
+          #{idx + 1}
+        </span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: accentColor }}>
+          {type === 'mover' ? '+' : ''}{player.diff}
+        </span>
+      </div>
+      <span style={{
+        fontSize: 13,
+        fontWeight: 600,
+        color: 'var(--text-primary)',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}>
+        {player.accountid}
+      </span>
+      <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
+        {player.rating.toLocaleString()} MMR
+      </span>
+    </Link>
+  );
+});
 
 export default function TopMoversWidget({ players, fallers, locale, region }: { players: Mover[]; fallers?: Mover[]; locale: Locale; region?: string }) {
   const t = translations[locale];
@@ -105,66 +184,15 @@ function ScrollableMovers({ cards, region, type, locale }: { cards: { accountid:
         }}
       >
         {cards.map((p, idx) => (
-          <Link
+          <MoverCard
             key={p.accountid}
-            href={`/player/${p.accountid}?region=${region}`}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2,
-              padding: '12px 14px',
-              minWidth: 140,
-              maxWidth: 140,
-              background: 'var(--gradient-card)',
-              border: '1px solid var(--border-dim)',
-              borderLeft: `3px solid ${idx === 0 ? borderColor : 'transparent'}`,
-              borderRadius: 8,
-              cursor: 'pointer',
-              transition: 'border-color 150ms, box-shadow 150ms, transform 150ms',
-              boxShadow: 'var(--shadow-sm)',
-              flexShrink: 0,
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderTopColor = 'var(--border-mid)';
-              e.currentTarget.style.borderRightColor = 'var(--border-mid)';
-              e.currentTarget.style.borderBottomColor = 'var(--border-mid)';
-              e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderTopColor = 'var(--border-dim)';
-              e.currentTarget.style.borderRightColor = 'var(--border-dim)';
-              e.currentTarget.style.borderBottomColor = 'var(--border-dim)';
-              e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: idx < 3 ? accentColor : 'var(--text-muted)',
-              }}>
-                #{idx + 1}
-              </span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: accentColor }}>
-                {type === 'mover' ? '+' : ''}{p.diff}
-              </span>
-            </div>
-            <span style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}>
-              {p.accountid}
-            </span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
-              {p.rating.toLocaleString()} {t.mmr}
-            </span>
-          </Link>
+            player={p}
+            idx={idx}
+            region={region}
+            type={type}
+            accentColor={accentColor}
+            borderColor={borderColor}
+          />
         ))}
       </div>
 

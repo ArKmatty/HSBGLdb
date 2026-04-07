@@ -33,6 +33,11 @@ const nextConfig: NextConfig = {
   // Optimize package imports for better tree-shaking
   experimental: {
     optimizePackageImports: ['recharts', 'lucide-react'],
+    // Serve stale page/segment cache data immediately during navigation
+    // while revalidating in the background for faster page transitions
+    staleTimes: {
+      dynamic: 60,  // 60s stale time for dynamic pages (faster navigation)
+    },
   },
   async headers() {
     return [
