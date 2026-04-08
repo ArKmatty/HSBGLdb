@@ -167,7 +167,7 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
   const [searchTerm, setSearchTerm] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>('rank');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<Array<{ accountId: string; rating: number }>>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -206,10 +206,10 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSelectPlayer = (playerName: string) => {
+  const handleSelectPlayer = (player: { accountId: string; rating: number }) => {
     setSearchTerm('');
     setShowSuggestions(false);
-    router.push(`/player/${encodeURIComponent(playerName)}?region=${region || 'EU'}`);
+    router.push(`/player/${encodeURIComponent(player.accountId)}?region=${region || 'EU'}`);
   };
 
   useEffect(() => {
@@ -415,11 +415,11 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
               zIndex: 50,
             }}
           >
-            {searchSuggestions.map((playerName, idx) => (
+            {searchSuggestions.map((player, idx) => (
               <button
-                key={playerName}
+                key={player.accountId}
                 data-search-suggestion
-                onClick={() => handleSelectPlayer(playerName)}
+                onClick={() => handleSelectPlayer(player)}
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -450,11 +450,11 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
                 }}
               >
                 <Search size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {playerName}
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                  {player.accountId}
                 </span>
-                <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>
-                  Press Enter ↵
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                  {player.rating.toLocaleString()}
                 </span>
               </button>
             ))}

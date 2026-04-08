@@ -13,7 +13,7 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
   const [compareName, setCompareName] = useState('');
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<Array<{ accountId: string; rating: number }>>([]);
   const [error, setError] = useState<string | null>(null);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,7 +35,7 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
     setSearching(true);
     try {
       const results = await searchPlayers(query);
-      setSuggestions(results.filter(n => n.toLowerCase() !== currentName.toLowerCase()));
+      setSuggestions(results.filter(p => p.accountId.toLowerCase() !== currentName.toLowerCase()));
       setActiveSuggestionIndex(-1);
     } catch {
       setSuggestions([]);
@@ -59,10 +59,10 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
     router.push(`/compare/${encodeURIComponent(currentName)}/${encodeURIComponent(target)}`);
   }, [currentName, compareName, router]);
 
-  const handleSelectSuggestion = useCallback((name: string) => {
-    setCompareName(name);
+  const handleSelectSuggestion = useCallback((player: { accountId: string; rating: number }) => {
+    setCompareName(player.accountId);
     setSuggestions([]);
-    handleCompare(name);
+    handleCompare(player.accountId);
   }, [handleCompare]);
 
   const handleClose = useCallback(() => {
@@ -248,13 +248,13 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
                 Searching...
               </div>
             ) : (
-              suggestions.map((name, idx) => (
+              suggestions.map((player, idx) => (
                 <button
-                  key={name}
+                  key={player.accountId}
                   id={`compare-suggestion-${idx}`}
                   role="option"
                   aria-selected={idx === activeSuggestionIndex}
-                  onClick={() => handleSelectSuggestion(name)}
+                  onClick={() => handleSelectSuggestion(player)}
                   style={{
                     width: '100%',
                     padding: '8px 12px',
@@ -275,7 +275,7 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   <Search size={12} color="var(--text-muted)" />
-                  {name}
+                  {player.accountId}
                 </button>
               ))
             )}

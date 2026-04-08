@@ -20,7 +20,7 @@ export default function SiteNav() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<Array<{ accountId: string; rating: number }>>([]);
   const [searching, setSearching] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
@@ -483,7 +483,7 @@ export default function SiteNav() {
                     e.preventDefault();
                     const selectedIndex = activeSuggestionIndex >= 0 ? activeSuggestionIndex : 0;
                     if (suggestions.length > 0 && selectedIndex < suggestions.length) {
-                      window.location.href = `/player/${encodeURIComponent(suggestions[selectedIndex])}`;
+                      window.location.href = `/player/${encodeURIComponent(suggestions[selectedIndex].accountId)}`;
                     }
                   }
                 }}
@@ -524,13 +524,13 @@ export default function SiteNav() {
                     Searching...
                   </div>
                 ) : (
-                  suggestions.map((name, idx) => (
+                  suggestions.map((player, idx) => (
                     <Link
-                      key={name}
+                      key={player.accountId}
                       id={`suggestion-${idx}`}
                       role="option"
                       aria-selected={idx === activeSuggestionIndex}
-                      href={`/player/${encodeURIComponent(name)}`}
+                      href={`/player/${encodeURIComponent(player.accountId)}`}
                       onClick={() => {
                         setSearchOpen(false);
                         setQuery('');
@@ -538,7 +538,9 @@ export default function SiteNav() {
                         cancelDebounce();
                       }}
                       style={{
-                        display: 'block',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                         padding: '10px 12px',
                         background: idx === activeSuggestionIndex ? 'var(--bg-elevated)' : 'transparent',
                         borderBottom: '1px solid var(--border-dim)',
@@ -550,8 +552,15 @@ export default function SiteNav() {
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-elevated)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
-                      <TrendingUp size={12} style={{ marginRight: 8, opacity: 0.5 }} />
-                      {name}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        <TrendingUp size={12} style={{ opacity: 0.5, flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {player.accountId}
+                        </span>
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, marginLeft: 12 }}>
+                        {player.rating.toLocaleString()}
+                      </span>
                     </Link>
                   ))
                 )}
