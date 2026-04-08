@@ -287,19 +287,24 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
   return (
     <div>
       {/* Search */}
-      <div style={{ marginBottom: 20 }} ref={searchContainerRef}>
+      <div style={{ marginBottom: 20 }}>
         <div
+          ref={searchContainerRef}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '0 14px',
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border-mid)',
-            borderRadius: 12,
-            transition: 'border-color 150ms, box-shadow 150ms',
             position: 'relative',
           }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '0 14px',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-mid)',
+              borderRadius: 12,
+              transition: 'border-color 150ms, box-shadow 150ms',
+            }}
           onFocus={e => {
             e.currentTarget.style.borderColor = 'var(--accent)';
             e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-glow)';
@@ -399,10 +404,9 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
             aria-label="Search suggestions"
             style={{
               position: 'absolute',
-              top: '100%',
+              top: 'calc(100% + 6px)',
               left: 0,
               right: 0,
-              marginTop: 8,
               background: 'var(--bg-surface)',
               border: '1px solid var(--border-dim)',
               borderRadius: 10,
@@ -456,6 +460,7 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {/* Meta row */}
