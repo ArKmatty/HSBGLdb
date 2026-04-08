@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp, TrendingDown, Minus, ChevronUp, ChevronDown, Crown, X } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, ChevronUp, ChevronDown, Crown, X, Search } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
 import { translations } from "@/lib/i18n";
 import { EmptyState } from "./EmptyState";
 import { getTwitchStatusesForLeaderboard } from "@/app/actions/twitch";
+import { searchPlayers } from "@/app/actions/player";
 import { memo } from "react";
 
 interface Player {
@@ -166,8 +167,50 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
   const [searchTerm, setSearchTerm] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>('rank');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const t = translations[locale];
+
+  // Debounced server-side search
+  useEffect(() => {
+    if (searchTerm.length < 2) {
+      setSearchSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      const results = await searchPlayers(searchTerm);
+      setSearchSuggestions(results);
+      setShowSuggestions(true);
+      setIsSearching(false);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelectPlayer = (playerName: string) => {
+    setSearchTerm('');
+    setShowSuggestions(false);
+    router.push(`/player/${encodeURIComponent(playerName)}?region=${region || 'EU'}`);
+  };
 
   useEffect(() => {
     const REFRESH_COOLDOWN_MS = 60_000; // 1 minute cooldown between refreshes
@@ -264,7 +307,7 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
   return (
     <div>
       {/* Search */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 20 }} ref={searchContainerRef}>
         <div
           style={{
             display: 'flex',
@@ -275,6 +318,7 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
             border: '1px solid var(--border-mid)',
             borderRadius: 12,
             transition: 'border-color 150ms, box-shadow 150ms',
+            position: 'relative',
           }}
           onFocus={e => {
             e.currentTarget.style.borderColor = 'var(--accent)';
@@ -285,12 +329,33 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
             e.currentTarget.style.boxShadow = 'none';
           }}
         >
+          <Search size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
           <input
+            ref={searchInputRef}
             type="text"
-            placeholder={t.searchPlaceholder}
+            placeholder={`Search all players or filter on this page...`}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            aria-label={t.searchPlaceholder}
+            onKeyDown={e => {
+              // Navigate suggestions with arrows
+              if (e.key === 'ArrowDown' && showSuggestions && searchSuggestions.length > 0) {
+                e.preventDefault();
+                const firstItem = document.querySelector('[data-search-suggestion]') as HTMLElement;
+                firstItem?.focus();
+              }
+              // Enter to select first suggestion
+              if (e.key === 'Enter' && showSuggestions && searchSuggestions.length > 0) {
+                e.preventDefault();
+                handleSelectPlayer(searchSuggestions[0]);
+              }
+              // Escape to close suggestions
+              if (e.key === 'Escape') {
+                setShowSuggestions(false);
+              }
+            }}
+            aria-label="Search players"
+            aria-expanded={showSuggestions}
+            aria-haspopup="listbox"
             style={{
               flex: 1,
               padding: '12px 0',
@@ -303,9 +368,23 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
               outline: 'none',
             }}
           />
+          {isSearching && (
+            <div style={{
+              width: 14,
+              height: 14,
+              border: '2px solid var(--border-dim)',
+              borderTopColor: 'var(--accent)',
+              borderRadius: '50%',
+              animation: 'spin 0.6s linear infinite',
+            }} />
+          )}
           {searchTerm && (
             <button
-              onClick={() => setSearchTerm('')}
+              onClick={() => {
+                setSearchTerm('');
+                setShowSuggestions(false);
+                searchInputRef.current?.focus();
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -332,6 +411,71 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
             </button>
           )}
         </div>
+
+        {/* Autocomplete dropdown */}
+        {showSuggestions && searchSuggestions.length > 0 && (
+          <div
+            role="listbox"
+            aria-label="Search suggestions"
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              marginTop: 8,
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-dim)',
+              borderRadius: 10,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              overflow: 'hidden',
+              zIndex: 50,
+            }}
+          >
+            {searchSuggestions.map((playerName, idx) => (
+              <button
+                key={playerName}
+                data-search-suggestion
+                onClick={() => handleSelectPlayer(playerName)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  background: idx === 0 ? 'var(--bg-elevated)' : 'transparent',
+                  border: 'none',
+                  borderBottom: idx < searchSuggestions.length - 1 ? '1px solid var(--border-dim)' : 'none',
+                  color: 'var(--text-primary)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'background-color 150ms',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = idx === 0 ? 'var(--bg-elevated)' : 'transparent';
+                }}
+                onFocus={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)';
+                }}
+                onBlur={e => {
+                  (e.currentTarget as HTMLElement).style.background = idx === 0 ? 'var(--bg-elevated)' : 'transparent';
+                }}
+              >
+                <Search size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {playerName}
+                </span>
+                <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>
+                  Press Enter ↵
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Meta row */}
