@@ -27,7 +27,7 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
   }, [open]);
 
   const handleSearch = useCallback(async (query: string) => {
-    if (query.length < 2) {
+    if (query.length < 3) {
       setSuggestions([]);
       setActiveSuggestionIndex(-1);
       return;

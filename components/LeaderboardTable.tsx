@@ -177,7 +177,7 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
 
   // Debounced server-side search
   useEffect(() => {
-    if (searchTerm.length < 2) {
+    if (searchTerm.length < 3) {
       setSearchSuggestions([]);
       setShowSuggestions(false);
       return;
@@ -189,7 +189,7 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
       setSearchSuggestions(results);
       setShowSuggestions(true);
       setIsSearching(false);
-    }, 300);
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);

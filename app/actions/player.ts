@@ -49,34 +49,35 @@ export async function getPlayerHistory(name: string, region?: string, limit = 10
 /**
  * Search players by partial name match.
  * Returns distinct accountIds with their latest rating that contain the query string (case-insensitive).
- * @param query - The search query (minimum 2 characters)
+ * @param query - The search query (minimum 3 characters)
  * @returns Array of objects with accountId and rating (max 10 results)
  */
 export async function searchPlayers(query: string) {
-  if (!query || query.length < 2) return [];
+  if (!query || query.length < 3) return [];
   try {
-    // Fetch only what we need - 20 gives us room to deduplicate and return 10 unique
+    // The trigram index on accountId makes the ILIKE filter efficient
+    // Fetch up to 100 rows to ensure we get 10 unique players (accounts for duplicates in history)
     const { data, error } = await supabaseAdmin
       .from('leaderboard_history')
-      .select('accountId, rating')
+      .select('accountId, rating, created_at')
       .ilike('accountId', `%${query}%`)
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(100);
 
     if (error) return [];
 
+    // Deduplicate client-side: keep only the most recent entry per player
     const seen = new Map<string, { accountId: string; rating: number }>();
-    const results: Array<{ accountId: string; rating: number }> = [];
-    
+
     for (const d of data) {
       const key = d.accountId.toLowerCase();
       if (!seen.has(key)) {
         seen.set(key, { accountId: d.accountId, rating: d.rating });
-        results.push({ accountId: d.accountId, rating: d.rating });
+        if (seen.size >= 10) break;
       }
     }
 
-    return results.slice(0, 10);
+    return Array.from(seen.values());
   } catch {
     return [];
   }

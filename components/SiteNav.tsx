@@ -506,7 +506,7 @@ export default function SiteNav() {
               />
             </div>
 
-            {(suggestions.length > 0 || searching) && query.length >= 2 && (
+            {(suggestions.length > 0 || searching) && query.length >= 3 && (
               <div
                 id="suggestions-listbox"
                 role="listbox"
@@ -567,7 +567,7 @@ export default function SiteNav() {
               </div>
             )}
 
-            {query.length >= 2 && !searching && suggestions.length === 0 && (
+            {query.length >= 3 && !searching && suggestions.length === 0 && (
               <EmptyState
                 type="no-results"
                 title="No players found"
