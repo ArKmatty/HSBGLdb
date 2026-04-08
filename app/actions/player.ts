@@ -77,7 +77,12 @@ export async function searchPlayers(query: string) {
       }
     }
 
-    return Array.from(seen.values());
+    const results = Array.from(seen.values());
+
+    // Sort by MMR descending when there's no clear match
+    results.sort((a, b) => b.rating - a.rating);
+
+    return results;
   } catch {
     return [];
   }
