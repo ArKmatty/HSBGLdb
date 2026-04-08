@@ -248,15 +248,9 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
 
   const getDelta = useCallback((p: Player) => p.lastRating ? p.rating - p.lastRating : 0, []);
 
-  const filtered = useMemo(() => 
-    players.filter(p =>
-      p.accountid.toLowerCase().includes(searchTerm.toLowerCase())
-    ),
-    [players, searchTerm]
-  );
-
+  // Only use search for autocomplete navigation, not page filtering
   const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
+    return [...players].sort((a, b) => {
       let cmp = 0;
       if (sortKey === 'rank') cmp = a.rank - b.rank;
       else if (sortKey === 'name') cmp = a.accountid.localeCompare(b.accountid);
@@ -264,7 +258,7 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
       else if (sortKey === 'delta') cmp = getDelta(a) - getDelta(b);
       return sortDir === 'desc' ? -cmp : cmp;
     });
-  }, [filtered, sortKey, sortDir, getDelta]);
+  }, [players, sortKey, sortDir, getDelta]);
 
   if (!players || players.length === 0) {
     return (
@@ -272,20 +266,6 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
         type="no-data"
         title={t.noPlayers}
         description="No players found in this region yet."
-      />
-    );
-  }
-
-  if (filtered.length === 0 && searchTerm) {
-    return (
-      <EmptyState
-        type="no-data"
-        title="No players found"
-        description={`No players match "${searchTerm}". Try a different search term.`}
-        action={{
-          label: 'Clear Search',
-          onClick: () => setSearchTerm(''),
-        }}
       />
     );
   }
