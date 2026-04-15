@@ -7,7 +7,7 @@ const REVALIDATE_SECONDS = 60;
 const CACHE_LEADERBOARD_SECONDS = 180; // 3 minutes (reduced from 5min) - better balance of freshness vs performance
 const CACHE_PLAYER_LIVE_SECONDS = 120;
 const CN_API_BASE = 'https://webapi.blizzard.cn/hs-rank-api-server/api';
-const CN_SEASON_ID = parseInt(process.env.CN_SEASON_ID || '17', 10);
+const CN_SEASON_ID = parseInt(process.env.CN_SEASON_ID || '13', 10);
 
 // In-memory cache for player live stats to avoid redundant lookups within the cache window
 // Key: lowercase player name, Value: { result, expiry }
