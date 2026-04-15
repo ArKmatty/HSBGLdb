@@ -5,7 +5,7 @@ import { revalidateTag } from 'next/cache';
 const REGIONS = ['EU', 'US', 'AP', 'CN'];
 const PAGES_TO_FETCH = 20; // 20 pages × 25 players = 500 players per region
 const CN_API_BASE = 'https://webapi.blizzard.cn/hs-rank-api-server/api';
-const CN_SEASON_ID = parseInt(process.env.CN_SEASON_ID || '13', 10);
+const CN_SEASON_ID = parseInt(process.env.CN_SEASON_ID || '19', 10);
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 500;
 
