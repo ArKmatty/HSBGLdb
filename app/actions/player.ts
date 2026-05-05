@@ -2,6 +2,11 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { getPlayerLiveStats } from '@/lib/blizzard';
 
+type SearchPlayer = { accountId: string; rating: number };
+type SearchPlayersResult =
+  | { success: true; players: SearchPlayer[] }
+  | { success: false; error: string };
+
 /**
  * Retrieves player rating history from Supabase.
  * @param name - The player's account ID (battle tag)
@@ -52,8 +57,8 @@ export async function getPlayerHistory(name: string, region?: string, limit = 10
  * @param query - The search query (minimum 3 characters)
  * @returns Array of objects with accountId and rating (max 10 results)
  */
-export async function searchPlayers(query: string) {
-  if (!query || query.length < 3) return { success: true, players: [] as Array<{ accountId: string; rating: number }> };
+export async function searchPlayers(query: string): Promise<SearchPlayersResult> {
+  if (!query || query.length < 3) return { success: true, players: [] };
   try {
     // The trigram index on accountId makes the ILIKE filter efficient
     // Fetch up to 100 rows to ensure we get 10 unique players (accounts for duplicates in history)
