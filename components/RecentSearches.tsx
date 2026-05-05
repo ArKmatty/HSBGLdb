@@ -86,7 +86,7 @@ export default function RecentSearches({ locale }: { locale: Locale }) {
             </Link>
             <button
               onClick={() => remove(name)}
-              title={t.remove}
+              aria-label={t.remove}
               style={{
                 padding: '8px',
                 borderRadius: 6,

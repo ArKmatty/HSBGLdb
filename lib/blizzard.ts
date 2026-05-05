@@ -1,13 +1,11 @@
 import { supabaseAdmin } from './supabase';
 import { ingestLeaderboardSnapshot } from './ingest';
 import { unstable_cache } from 'next/cache';
-import type { BlizzardLeaderboardRow, BlizzardLeaderboardData, BlizzardPlayerLive, CnLeaderboardResponse, LeaderboardHistoryRecord } from './types';
+import type { BlizzardLeaderboardRow, BlizzardLeaderboardData, BlizzardPlayerLive, LeaderboardHistoryRecord } from './types';
 
 const REVALIDATE_SECONDS = 60;
 const CACHE_LEADERBOARD_SECONDS = 180; // 3 minutes (reduced from 5min) - better balance of freshness vs performance
 const CACHE_PLAYER_LIVE_SECONDS = 120;
-const CN_API_BASE = 'https://webapi.blizzard.cn/hs-rank-api-server/api';
-const CN_SEASON_ID = parseInt(process.env.CN_SEASON_ID || '19', 10);
 
 // In-memory cache for player live stats to avoid redundant lookups within the cache window
 // Key: lowercase player name, Value: { result, expiry }
@@ -178,6 +176,7 @@ async function fetchRegionLeaderboard(region: string, page: number): Promise<Bli
           .select('accountId, rating, created_at, region')
           .in('accountId', playerNames)
           .eq('region', region)
+          .gte('created_at', yesterday)
           .lt('created_at', new Date().toISOString())
           .order('created_at', { ascending: true });
         
@@ -316,35 +315,32 @@ export const getPlayerLiveStats = unstable_cache(
 
     for (const region of orderedRegions) {
       try {
-        // CN uses a different API
+        // CN: query database instead of live API per architecture convention
         if (region === 'CN') {
-          const cnPagesToScan = preferredRegion === 'CN' ? PREFERRED_PAGES : OTHER_PAGES;
+          try {
+            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            const { data: cnPlayers } = await supabaseAdmin
+              .from('leaderboard_history')
+              .select('accountId, rating, rank, region, created_at')
+              .eq('region', 'CN')
+              .ilike('accountId', name)
+              .gte('created_at', yesterday)
+              .order('created_at', { ascending: false })
+              .limit(1);
 
-          const cnRequests = Array.from({ length: cnPagesToScan }, (_, i) =>
-            fetchWithRetry(
-              `${CN_API_BASE}/game/ranks?mode_name=battlegrounds&season_id=${CN_SEASON_ID}&page=${i + 1}&page_size=25`,
-              { next: { revalidate: REVALIDATE_SECONDS } },
-              2, // 2 retry attempts for player search
-              `[Blizzard CN player search] page ${i + 1}`
-            )
-              .then(res => {
-                if (!res.ok) return { code: 0, message: '', data: { list: [], total: 0 } };
-                return res.json() as Promise<CnLeaderboardResponse>;
-              })
-              .catch(() => ({ code: 0, message: '', data: { list: [], total: 0 } }))
-          );
-
-          const cnResults = await Promise.all(cnRequests);
-          const allPlayers = cnResults.flatMap(r => r.data?.list || []);
-          const match = allPlayers.find(p => p.battle_tag.toLowerCase() === name.toLowerCase());
-
-          if (match) {
-            return {
-              rank: match.position,
-              accountid: match.battle_tag,
-              rating: match.score,
-              region: 'CN',
-            };
+            if (cnPlayers && cnPlayers.length > 0) {
+              const p = cnPlayers[0];
+              const result = {
+                rank: p.rank,
+                accountid: p.accountId,
+                rating: p.rating,
+                region: 'CN',
+              };
+              playerLiveCache.set(cacheKey, { result, expiry: now + PLAYER_LIVE_CACHE_TTL_MS });
+              return result;
+            }
+          } catch (e) {
+            console.error(`[Blizzard CN] DB error searching for ${name}:`, e);
           }
           continue;
         }

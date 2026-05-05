@@ -99,23 +99,7 @@ export function bucketizeHistory(
   });
 }
 
-export const getTopMovers = unstable_cache(
-  async (region: string = 'EU') => {
-    const result = await getMoversAndFallers(region);
-    return result.movers;
-  },
-  ['top-movers-cache'],
-  { revalidate: 600, tags: ['movers'] }
-);
 
-export const getTopFallers = unstable_cache(
-  async (region: string = 'EU') => {
-    const result = await getMoversAndFallers(region);
-    return result.fallers;
-  },
-  ['top-fallers-cache'],
-  { revalidate: 600, tags: ['fallers'] }
-);
 
 /**
  * Fetch movers and fallers in a single query to avoid redundant database work

@@ -9,7 +9,6 @@ import RecentSearches from '../components/RecentSearches';
 import ScrollToTop from '../components/ScrollToTop';
 import DataFreshness from '../components/DataFreshness';
 import WatchlistWidget from '../components/WatchlistWidget';
-import { getTwitchStatusesForLeaderboard } from './actions/twitch';
 import { detectLocale, translations } from '@/lib/i18n';
 
 // Prefetch all regions on home page load for faster navigation
@@ -112,9 +111,7 @@ export default async function Home({ searchParams }: Props) {
 
   const { movers: topMovers, fallers: topFallers } = moversAndFallers;
 
-  const playerIds = players.map(p => p.accountid);
   // Note: Twitch statuses now fetched client-side for faster FCP
-  const twitchStatuses: Record<string, any> = {};
   const now = new Date().getTime();
 
   return (
@@ -163,7 +160,7 @@ export default async function Home({ searchParams }: Props) {
         </section>
 
         <section>
-          <LeaderboardTable players={players} twitchStatuses={twitchStatuses} locale={locale} region={displayRegion} />
+          <LeaderboardTable players={players} locale={locale} region={displayRegion} />
         </section>
 
         {/* Pagination */}

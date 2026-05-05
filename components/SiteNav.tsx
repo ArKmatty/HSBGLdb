@@ -83,8 +83,12 @@ export default function SiteNav() {
     }
     setSearching(true);
     try {
-      const results = await searchPlayers(q);
-      setSuggestions(results.slice(0, 5));
+      const response = await searchPlayers(q);
+      if (response.success) {
+        setSuggestions(response.players.slice(0, 5));
+      } else {
+        setSuggestions([]);
+      }
       setActiveSuggestionIndex(-1);
     } catch {
       setSuggestions([]);

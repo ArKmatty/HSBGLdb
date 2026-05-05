@@ -182,7 +182,7 @@ export async function approveSubmission(id: string) {
     }
 
     revalidatePath("/admin/socials");
-    revalidateTag("player-socials", { expire: 0 });
+    revalidateTag("player-socials");
     return { success: true };
   } catch (err) {
     console.error("[SocialAdmin] Unexpected error:", err);

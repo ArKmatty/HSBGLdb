@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Heart, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useWatchlist } from "@/lib/watchlist";
 import { translations, type Locale } from "@/lib/i18n";
-import { EmptyState } from "./EmptyState";
 
 interface WatchedPlayer {
   name: string;

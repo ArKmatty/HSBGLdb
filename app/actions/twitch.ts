@@ -31,6 +31,10 @@ const getTwitchAccessToken = unstable_cache(
           cache: 'no-store',
         }
       );
+      if (!response.ok) {
+        console.error(`[Twitch] Token request failed: ${response.status}`);
+        return null;
+      }
       const data = await response.json() as TwitchTokenResponse;
       return data.access_token;
     } catch (e) {
@@ -54,14 +58,20 @@ export async function getTwitchLiveStatus(usernames: string[]) {
   if (!token || !CLIENT_ID) return {};
 
   try {
-    const query = usernames.map(u => `user_login=${u}`).join('&');
-    const response = await fetch(`https://api.twitch.tv/helix/streams?${query}`, {
+    const params = new URLSearchParams();
+    usernames.forEach(u => params.append('user_login', u));
+    const response = await fetch(`https://api.twitch.tv/helix/streams?${params.toString()}`, {
       headers: {
         'Client-ID': CLIENT_ID,
         'Authorization': `Bearer ${token}`
       },
       next: { revalidate: 60 }
     });
+
+    if (!response.ok) {
+      console.error(`[Twitch] Streams request failed: ${response.status}`);
+      return {};
+    }
 
     const data = await response.json() as TwitchStreamsResponse;
     const liveMap: Record<string, TwitchLiveStatus> = {};
@@ -140,19 +150,19 @@ export async function getTwitchStatusesForLeaderboard(accountIds: string[]) {
 
         if (socials.length > 0) {
             const relevantSocials = socials.filter(s =>
-                accountIds.some(id => id.toLowerCase() === s.accountid.toLowerCase())
+                s.twitchusername && accountIds.some(id => id.toLowerCase() === s.accountid.toLowerCase())
             );
 
             if (relevantSocials.length === 0) return {};
 
-            const twitchUsernames = relevantSocials.map(s => s.twitchusername);
+            const twitchUsernames = relevantSocials.map(s => s.twitchusername!);
             const liveMap = await getTwitchLiveStatus(twitchUsernames);
 
             const results: Record<string, { isLive: boolean; twitchUsername: string; title?: string; viewerCount?: number }> = {};
             relevantSocials.forEach(s => {
-                const status = liveMap[s.twitchusername.toLowerCase()];
+                const status = liveMap[s.twitchusername!.toLowerCase()];
                 results[s.accountid.toLowerCase()] = {
-                    twitchUsername: s.twitchusername,
+                    twitchUsername: s.twitchusername!,
                     ...status,
                     isLive: !!status,
                 };

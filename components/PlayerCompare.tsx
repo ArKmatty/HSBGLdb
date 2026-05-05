@@ -34,8 +34,12 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
     }
     setSearching(true);
     try {
-      const results = await searchPlayers(query);
-      setSuggestions(results.filter(p => p.accountId.toLowerCase() !== currentName.toLowerCase()));
+      const response = await searchPlayers(query);
+      if (response.success) {
+        setSuggestions(response.players.filter(p => p.accountId.toLowerCase() !== currentName.toLowerCase()));
+      } else {
+        setSuggestions([]);
+      }
       setActiveSuggestionIndex(-1);
     } catch {
       setSuggestions([]);
@@ -142,6 +146,7 @@ export default function PlayerCompare({ currentName }: { currentName: string }) 
           </h3>
           <button
             onClick={handleClose}
+            aria-label="Close comparison"
             style={{
               padding: 6,
               borderRadius: 6,

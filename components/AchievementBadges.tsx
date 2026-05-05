@@ -1,10 +1,12 @@
+"use client";
+
 import { Trophy, Zap, Flame, Target, Lock } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 interface Achievement {
   id: string;
   label: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   color: string;
   unlocked: boolean;
   hint?: string;

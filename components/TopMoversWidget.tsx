@@ -20,6 +20,7 @@ const MoverCard = memo(function MoverCard({
   type,
   accentColor,
   borderColor,
+  locale,
 }: {
   player: Mover;
   idx: number;
@@ -27,6 +28,7 @@ const MoverCard = memo(function MoverCard({
   type: 'mover' | 'faller';
   accentColor: string;
   borderColor: string;
+  locale: Locale;
 }) {
   return (
     <Link
@@ -85,7 +87,7 @@ const MoverCard = memo(function MoverCard({
         {player.accountid}
       </span>
       <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
-        {player.rating.toLocaleString()} MMR
+        {player.rating.toLocaleString(locale)} MMR
       </span>
     </Link>
   );
@@ -192,6 +194,7 @@ function ScrollableMovers({ cards, region, type, locale }: { cards: { accountid:
             type={type}
             accentColor={accentColor}
             borderColor={borderColor}
+            locale={locale}
           />
         ))}
       </div>

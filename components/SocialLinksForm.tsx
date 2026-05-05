@@ -113,6 +113,7 @@ export default function SocialLinksForm({ playerName }: { playerName: string }) 
               </h3>
               <button
                 onClick={reset}
+                aria-label="Close form"
                 style={{
                   padding: 6,
                   borderRadius: 6,

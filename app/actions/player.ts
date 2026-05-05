@@ -53,7 +53,7 @@ export async function getPlayerHistory(name: string, region?: string, limit = 10
  * @returns Array of objects with accountId and rating (max 10 results)
  */
 export async function searchPlayers(query: string) {
-  if (!query || query.length < 3) return [];
+  if (!query || query.length < 3) return { success: true, players: [] as Array<{ accountId: string; rating: number }> };
   try {
     // The trigram index on accountId makes the ILIKE filter efficient
     // Fetch up to 100 rows to ensure we get 10 unique players (accounts for duplicates in history)
@@ -64,12 +64,15 @@ export async function searchPlayers(query: string) {
       .order('created_at', { ascending: false })
       .limit(100);
 
-    if (error) return [];
+    if (error) {
+      console.error("[SearchPlayers] Supabase error:", error.message);
+      return { success: false, error: "Search failed" };
+    }
 
     // Deduplicate client-side: keep only the most recent entry per player
     const seen = new Map<string, { accountId: string; rating: number }>();
 
-    for (const d of data) {
+    for (const d of data || []) {
       const key = d.accountId.toLowerCase();
       if (!seen.has(key)) {
         seen.set(key, { accountId: d.accountId, rating: d.rating });
@@ -82,9 +85,10 @@ export async function searchPlayers(query: string) {
     // Sort by MMR descending when there's no clear match
     results.sort((a, b) => b.rating - a.rating);
 
-    return results;
-  } catch {
-    return [];
+    return { success: true, players: results };
+  } catch (e) {
+    console.error("[SearchPlayers] Unexpected error:", e);
+    return { success: false, error: "Search failed" };
   }
 }
 

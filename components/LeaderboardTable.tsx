@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import {
+  useState, useEffect, useMemo, useCallback, useRef, memo,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TrendingUp, TrendingDown, Minus, ChevronUp, ChevronDown, Crown, X, Search } from "lucide-react";
+import {
+  TrendingUp, TrendingDown, Minus, ChevronUp, ChevronDown, Crown, X, Search,
+} from "lucide-react";
 import type { Locale } from "@/lib/i18n";
 import { translations } from "@/lib/i18n";
 import { EmptyState } from "./EmptyState";
 import { getTwitchStatusesForLeaderboard } from "@/app/actions/twitch";
 import { searchPlayers } from "@/app/actions/player";
-import { memo } from "react";
 
 interface Player {
   rank: number;
@@ -22,17 +25,32 @@ type SortKey = 'rank' | 'name' | 'mmr' | 'delta';
 
 const RANK_COLORS: Record<number, string> = { 1: '#e8a838', 2: '#8b8fa3', 3: '#a0722a' };
 
+const SortIcon = memo(function SortIcon({
+  column, sortKey, sortDir,
+}: {
+  column: SortKey;
+  sortKey: SortKey;
+  sortDir: 'asc' | 'desc';
+}) {
+  if (sortKey !== column) return null;
+  return sortDir === 'asc'
+    ? <ChevronUp size={10} style={{ marginLeft: 2, display: 'inline', verticalAlign: 'middle' }} />
+    : <ChevronDown size={10} style={{ marginLeft: 2, display: 'inline', verticalAlign: 'middle' }} />;
+});
+
 // Memoized row component to prevent unnecessary re-renders when Twitch statuses update
 const LeaderboardRow = memo(function LeaderboardRow({
   player,
   idx,
   twitchData,
   region,
+  locale,
 }: {
   player: Player;
   idx: number;
   twitchData?: { isLive: boolean; twitchUsername?: string; title?: string; viewerCount?: number };
   region?: string;
+  locale: Locale;
 }) {
   const diff = player.lastRating ? player.rating - player.lastRating : 0;
   const isLive = twitchData?.isLive;
@@ -138,7 +156,7 @@ const LeaderboardRow = memo(function LeaderboardRow({
           fontVariantNumeric: 'tabular-nums',
           color: 'var(--accent)',
         }}>
-          {player.rating.toLocaleString()}
+                  {player.rating.toLocaleString(locale)}
         </span>
       </td>
 
@@ -185,8 +203,12 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
 
     setIsSearching(true);
     const timer = setTimeout(async () => {
-      const results = await searchPlayers(searchTerm);
-      setSearchSuggestions(results);
+      const response = await searchPlayers(searchTerm);
+      if (response.success) {
+        setSearchSuggestions(response.players);
+      } else {
+        setSearchSuggestions([]);
+      }
       setShowSuggestions(true);
       setIsSearching(false);
     }, 150);
@@ -205,12 +227,6 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleSelectPlayer = (player: { accountId: string; rating: number }) => {
-    setSearchTerm('');
-    setShowSuggestions(false);
-    router.push(`/player/${encodeURIComponent(player.accountId)}?region=${region || 'EU'}`);
-  };
 
   useEffect(() => {
     const REFRESH_COOLDOWN_MS = 60_000; // 1 minute cooldown between refreshes
@@ -248,6 +264,21 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
 
   const getDelta = useCallback((p: Player) => p.lastRating ? p.rating - p.lastRating : 0, []);
 
+  const handleSort = useCallback((key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'rank' ? 'asc' : 'asc');
+    }
+  }, [sortKey]);
+
+  const handleSelectPlayer = useCallback((player: { accountId: string; rating: number }) => {
+    setSearchTerm('');
+    setShowSuggestions(false);
+    router.push(`/player/${encodeURIComponent(player.accountId)}?region=${region || 'EU'}`);
+  }, [region, router]);
+
   // Only use search for autocomplete navigation, not page filtering
   const sorted = useMemo(() => {
     return [...players].sort((a, b) => {
@@ -269,20 +300,6 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
       />
     );
   }
-
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortDir(key === 'rank' ? 'asc' : 'asc');
-    }
-  };
-
-  const SortIcon = ({ column }: { column: SortKey }) => {
-    if (sortKey !== column) return null;
-    return sortDir === 'asc' ? <ChevronUp size={10} style={{ marginLeft: 2, display: 'inline', verticalAlign: 'middle' }} /> : <ChevronDown size={10} style={{ marginLeft: 2, display: 'inline', verticalAlign: 'middle' }} />;
-  };
 
   return (
     <div>
@@ -454,7 +471,7 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
                   {player.accountId}
                 </span>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                  {player.rating.toLocaleString()}
+          {player.rating.toLocaleString(locale)}
                 </span>
               </button>
             ))}
@@ -519,7 +536,7 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
                       transition: 'color 150ms',
                     }}
                   >
-                    {label}<SortIcon column={key} />
+                    {label}<SortIcon column={key} sortKey={sortKey} sortDir={sortDir} />
                   </th>
                 ))}
               </tr>
@@ -534,6 +551,7 @@ export default function LeaderboardTable({ players, twitchStatuses: initialTwitc
                     idx={idx}
                     twitchData={twitchData}
                     region={region}
+                    locale={locale}
                   />
                 );
               })}
