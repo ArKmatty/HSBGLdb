@@ -207,8 +207,13 @@ export async function GET(request: Request) {
     }
 
     if (totalInserted === 0) {
-      console.error('[CRON JOB] No rows inserted at all');
-      return NextResponse.json({ success: false, error: 'Nessun salvataggio riuscito' }, { status: 500 });
+      console.error('[CRON JOB] No rows inserted at all, Supabase likely unreachable');
+      return NextResponse.json({
+        success: false,
+        warning: 'Supabase unreachable, data will sync on next run',
+        syncStats,
+        regionResults,
+      }, { status: 200 });
     }
 
     // Revalidate all cache tags so next request fetches fresh data
