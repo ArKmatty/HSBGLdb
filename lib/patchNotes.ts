@@ -274,17 +274,23 @@ export async function fetchPatchNotes(limit = 10): Promise<PatchNote[]> {
   }
 
   try {
-    const { data: existing, error } = await supabaseAdmin
-      .from('patch_notes')
-      .select('*')
-      .order('date', { ascending: false })
-      .limit(limit * 2); // Fetch more to allow deduplication
+    const result = await Promise.race([
+      supabaseAdmin
+        .from('patch_notes')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(limit * 2),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Supabase fetch timeout')), REQUEST_TIMEOUT)
+      ),
+    ]) as { data: PatchNote[] | null; error: unknown | null };
 
-    if (error) throw error;
+    if (result.error) throw result.error;
 
+    const existing = result.data;
     if (existing && existing.length > 0) {
       // Sort by date properly
-      const sorted = [...existing].sort((a, b) => {
+      const sorted = [...existing].sort((a: PatchNote, b: PatchNote) => {
         const parseDate = (d: string) => {
           const match = d.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
           if (match) {
@@ -364,28 +370,43 @@ export async function refreshPatchNotes(): Promise<{ success: boolean; count?: n
       const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       const compositeId = `${slug}-${date.replace(/\//g, '-')}`;
 
-      // Check for duplicates by ID or date
-      const { data: existingById } = await supabaseAdmin
-        .from('patch_notes')
-        .select('id')
-        .eq('id', compositeId)
-        .single();
+      // Check for duplicates by ID or date (with timeout)
+      const checkDuplicate = async (query: PromiseLike<{ data: unknown | null; error: unknown | null }>) => {
+        return Promise.race([
+          query,
+          new Promise<{ data: null; error: Error }>((_, reject) =>
+            setTimeout(() => reject(new Error('Duplicate check timeout')), REQUEST_TIMEOUT)
+          ),
+        ]);
+      };
 
-      if (existingById) {
-        console.log('[PatchNotes] Skipping duplicate (by ID):', compositeId);
-        continue;
+      try {
+        const { data: existingById } = await checkDuplicate(
+          supabaseAdmin.from('patch_notes').select('id').eq('id', compositeId).single()
+        );
+        if (existingById) {
+          console.log('[PatchNotes] Skipping duplicate (by ID):', compositeId);
+          continue;
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message === 'Duplicate check timeout') {
+          console.warn('[PatchNotes] Duplicate check timed out, skipping upsert for safety');
+          errorCount++;
+          continue;
+        }
+        // Not found (single() throws when no row) - continue to upsert
       }
 
-      // Also check for same-date duplicates
-      const { data: existingByDate } = await supabaseAdmin
-        .from('patch_notes')
-        .select('id')
-        .eq('date', date)
-        .single();
-
-      if (existingByDate) {
-        console.log('[PatchNotes] Skipping duplicate (by date):', date);
-        continue;
+      try {
+        const { data: existingByDate } = await checkDuplicate(
+          supabaseAdmin.from('patch_notes').select('id').eq('date', date).single()
+        );
+        if (existingByDate) {
+          console.log('[PatchNotes] Skipping duplicate (by date):', date);
+          continue;
+        }
+      } catch (err) {
+        // Not found - continue to upsert
       }
 
       // Extract battlegrounds section
@@ -399,10 +420,9 @@ export async function refreshPatchNotes(): Promise<{ success: boolean; count?: n
         continue;
       }
 
-      // Save to database
-      const { error: upsertError } = await supabaseAdmin
-        .from('patch_notes')
-        .upsert({
+      // Save to database (with timeout)
+      const { error: upsertError } = await Promise.race([
+        supabaseAdmin.from('patch_notes').upsert({
           id: compositeId,
           title,
           date,
@@ -411,7 +431,11 @@ export async function refreshPatchNotes(): Promise<{ success: boolean; count?: n
           battlegrounds_changes: cleanBgChanges,
           image_url: imageUrl,
           created_at: new Date().toISOString(),
-        }, { onConflict: 'id' });
+        }, { onConflict: 'id' }),
+        new Promise<{ error: Error | null }>((_, reject) =>
+          setTimeout(() => reject(new Error('Upsert timeout')), REQUEST_TIMEOUT)
+        ),
+      ]);
 
       if (upsertError) {
         console.error('[PatchNotes] Upsert error:', upsertError);
@@ -422,7 +446,11 @@ export async function refreshPatchNotes(): Promise<{ success: boolean; count?: n
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      console.error('[PatchNotes] Error fetching', url, ':', errorMessage);
+      if (errorMessage.includes('timeout')) {
+        console.warn('[PatchNotes] Timeout fetching', url);
+      } else {
+        console.error('[PatchNotes] Error fetching', url, ':', errorMessage);
+      }
       errorCount++;
     }
   }
@@ -438,8 +466,12 @@ export async function getPatchNotes(limit = 10): Promise<PatchNote[]> {
   const cached = await fetchPatchNotes(limit);
 
   if (cached.length === 0) {
-    await refreshPatchNotes();
-    return fetchPatchNotes(limit);
+    const isBuilding = process.env.NEXT_PHASE === 'phase-production-build';
+    if (!isBuilding) {
+      await refreshPatchNotes();
+      return fetchPatchNotes(limit);
+    }
+    console.log('[PatchNotes] Skipping refresh during build, returning empty');
   }
 
   return cached;
