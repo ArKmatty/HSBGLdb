@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { revalidateTag } from 'next/cache';
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const REGIONS = ['EU', 'US', 'AP', 'CN'];
 const PAGES_TO_FETCH = 20; // 20 pages × 25 players = 500 players per region
@@ -11,7 +11,8 @@ const CN_SEASON_ID = parseInt(process.env.CN_SEASON_ID || '19', 10);
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 500;
 const INSERT_BATCH_SIZE = 250;
-const SUPABASE_TIMEOUT_MS = 30_000;
+const SUPABASE_TIMEOUT_MS = 15_000;
+const INSERT_MAX_RETRIES = 2;
 
 interface CnLeaderboardResponse {
   code: number;
@@ -55,7 +56,7 @@ type PlayerRow = { accountId: string; rating: number; rank: number; region: stri
 async function insertWithRetry(
   rows: PlayerRow[],
   label: string,
-  maxRetries = MAX_RETRIES
+  maxRetries = INSERT_MAX_RETRIES
 ): Promise<{ error: unknown }> {
   let lastError: unknown = null;
 
@@ -193,8 +194,13 @@ export async function GET(request: Request) {
     let totalErrors = 0;
     const regionResults: Record<string, { inserted: number; errors: number }> = {};
 
-    for (const [region, players] of playersByRegion) {
+    const insertPromises = Array.from(playersByRegion.entries()).map(async ([region, players]) => {
       const result = await insertInBatches(players, `${region} sync`);
+      return { region, result };
+    });
+
+    const insertResults = await Promise.all(insertPromises);
+    for (const { region, result } of insertResults) {
       regionResults[region] = result;
       totalInserted += result.inserted;
       totalErrors += result.errors;
