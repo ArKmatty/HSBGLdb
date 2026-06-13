@@ -2,12 +2,16 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { revalidateTag } from 'next/cache';
 
+export const maxDuration = 120;
+
 const REGIONS = ['EU', 'US', 'AP', 'CN'];
 const PAGES_TO_FETCH = 20; // 20 pages × 25 players = 500 players per region
 const CN_API_BASE = 'https://webapi.blizzard.cn/hs-rank-api-server/api';
 const CN_SEASON_ID = parseInt(process.env.CN_SEASON_ID || '19', 10);
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 500;
+const INSERT_BATCH_SIZE = 250;
+const SUPABASE_TIMEOUT_MS = 30_000;
 
 interface CnLeaderboardResponse {
   code: number;
@@ -44,6 +48,58 @@ async function fetchWithRetry(url: string, options: RequestInit, label: string, 
   
   console.error(`[${label}] Failed after ${maxRetries} attempts:`, lastError);
   return { ok: false, status: 0 } as Response;
+}
+
+type PlayerRow = { accountId: string; rating: number; rank: number; region: string; created_at: string };
+
+async function insertWithRetry(
+  rows: PlayerRow[],
+  label: string,
+  maxRetries = MAX_RETRIES
+): Promise<{ error: unknown }> {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const result = await Promise.race([
+        supabaseAdmin.from('leaderboard_history').insert(rows),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Supabase insert timeout')), SUPABASE_TIMEOUT_MS)
+        ),
+      ]) as { error: unknown | null };
+      if (!result.error) return { error: null };
+      lastError = result.error;
+    } catch (error) {
+      lastError = error;
+    }
+    const delay = RETRY_DELAY_MS * Math.pow(2, attempt);
+    console.warn(`[${label}] Insert retry ${attempt + 1}/${maxRetries} after ${delay}ms`);
+    if (attempt < maxRetries - 1) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+
+  console.error(`[${label}] Insert failed after ${maxRetries} attempts:`, lastError);
+  return { error: lastError };
+}
+
+async function insertInBatches(
+  rows: PlayerRow[],
+  label: string
+): Promise<{ inserted: number; errors: number }> {
+  let inserted = 0;
+  let errors = 0;
+  for (let i = 0; i < rows.length; i += INSERT_BATCH_SIZE) {
+    const batch = rows.slice(i, i + INSERT_BATCH_SIZE);
+    const { error } = await insertWithRetry(batch, `${label} batch ${Math.floor(i / INSERT_BATCH_SIZE) + 1}`);
+    if (error) {
+      errors += batch.length;
+      console.error(`[${label}] Batch failed:`, error);
+    } else {
+      inserted += batch.length;
+    }
+  }
+  return { inserted, errors };
 }
 
 async function fetchCnLeaderboard(page: number): Promise<Array<{ accountid: string; rating: number; rank: number }>> {
@@ -127,11 +183,26 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: '0 giocatori estratti. API non operante.' }, { status: 500 });
     }
 
-    const { error } = await supabaseAdmin.from('leaderboard_history').insert(allPlayersToInsert);
+    const playersByRegion = new Map<string, PlayerRow[]>();
+    for (const p of allPlayersToInsert) {
+      if (!playersByRegion.has(p.region)) playersByRegion.set(p.region, []);
+      playersByRegion.get(p.region)!.push(p);
+    }
 
-    if (error) {
-      console.error("[CRON JOB] Errore salvataggio bulk Supabase:", error);
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    let totalInserted = 0;
+    let totalErrors = 0;
+    const regionResults: Record<string, { inserted: number; errors: number }> = {};
+
+    for (const [region, players] of playersByRegion) {
+      const result = await insertInBatches(players, `${region} sync`);
+      regionResults[region] = result;
+      totalInserted += result.inserted;
+      totalErrors += result.errors;
+    }
+
+    if (totalInserted === 0) {
+      console.error('[CRON JOB] No rows inserted at all');
+      return NextResponse.json({ success: false, error: 'Nessun salvataggio riuscito' }, { status: 500 });
     }
 
     // Revalidate all cache tags so next request fetches fresh data
@@ -143,8 +214,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Sync Completato. Nuovi fotogrammi storici salvati: ${allPlayersToInsert.length}`,
+      message: `Sync Completato. Righe salvate: ${totalInserted}, Errori: ${totalErrors}`,
       syncStats,
+      regionResults,
     });
 
   } catch (error) {

@@ -15,7 +15,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Server-only service role client — bypasses RLS, use ONLY in server actions, API routes, and cron jobs
 export const supabaseAdmin = supabaseServiceKey
-  ? createClient(supabaseUrl, supabaseServiceKey)
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      global: {
+        fetch: (...args) => {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 30_000);
+          return fetch(args[0], { ...args[1], signal: controller.signal })
+            .finally(() => clearTimeout(timeout));
+        },
+      },
+    })
   : (() => {
       console.warn('[Supabase] SUPABASE_SERVICE_ROLE_KEY is missing. supabaseAdmin falls back to the anon client (RLS-protected). Server-only operations will fail.');
       return supabase;
