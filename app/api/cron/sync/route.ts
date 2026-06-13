@@ -216,6 +216,23 @@ export async function GET(request: Request) {
       }, { status: 200 });
     }
 
+    // Cleanup old rows (keep only last 30 days) to prevent database bloat
+    try {
+      const { count: deletedCount } = await Promise.race([
+        supabaseAdmin
+          .from('leaderboard_history')
+          .delete()
+          .lt('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+          .select('id', { count: 'exact', head: true }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Cleanup timeout')), 10_000)
+        ),
+      ]) as { count: number | null };
+      console.log(`[CRON JOB] Cleanup: removed rows older than 30 days (count: ${deletedCount ?? 'N/A'})`);
+    } catch (err) {
+      console.warn('[CRON JOB] Cleanup failed (non-critical):', err);
+    }
+
     // Revalidate all cache tags so next request fetches fresh data
     revalidateTag('leaderboard', { expire: 0 });
     revalidateTag('multiregion', { expire: 0 });
