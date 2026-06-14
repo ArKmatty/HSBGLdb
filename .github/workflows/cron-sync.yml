@@ -2,8 +2,8 @@ name: Leaderboard Sync
 
 on:
   schedule:
-    # Every 30 minutes (well within GitHub Actions free tier)
-    - cron: '*/30 * * * *'
+    # Every 2 hours (reduced frequency to stay within Supabase free tier Disk IO budget)
+    - cron: '0 */2 * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
