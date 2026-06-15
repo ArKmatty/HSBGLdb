@@ -218,17 +218,23 @@ export async function GET(request: Request) {
 
     // Cleanup old rows (keep only last 30 days) to prevent database bloat
     try {
-      const { count: deletedCount } = await Promise.race([
-        supabaseAdmin
-          .from('leaderboard_history')
-          .delete()
-          .lt('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-          .select('id', { count: 'exact', head: true }),
+      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { count: beforeCount } = await Promise.race([
+        supabaseAdmin.from('leaderboard_history').select('id', { count: 'exact', head: true }).lt('created_at', cutoff),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Cleanup timeout')), 10_000)
+          setTimeout(() => reject(new Error('Cleanup count timeout')), 10_000)
         ),
       ]) as { count: number | null };
-      console.log(`[CRON JOB] Cleanup: removed rows older than 30 days (count: ${deletedCount ?? 'N/A'})`);
+
+      if (beforeCount && beforeCount > 0) {
+        await Promise.race([
+          supabaseAdmin.from('leaderboard_history').delete().lt('created_at', cutoff),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Cleanup delete timeout')), 15_000)
+          ),
+        ]);
+        console.log(`[CRON JOB] Cleanup: removed ${beforeCount} rows older than 30 days`);
+      }
     } catch (err) {
       console.warn('[CRON JOB] Cleanup failed (non-critical):', err);
     }
